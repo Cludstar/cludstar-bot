@@ -19,8 +19,8 @@ export class SignalService {
     private async fetchTrendingTokens() {
         try {
             // Using DexScreener API as an example for Solana trending
-            // In reality, this might filter specifically for pump.fun tokens or certain volume thresholds
-            const response = await fetch('https://api.dexscreener.com/latest/dex/search?q=sol'); // Example query
+            // Fetching a popular meme coin like WIF instead of SOL to avoid self-swaps
+            const response = await fetch('https://api.dexscreener.com/latest/dex/search?q=wif');
             const data: any = await response.json();
 
             if (data.pairs && data.pairs.length > 0) {
