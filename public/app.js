@@ -32,12 +32,20 @@ async function fetchLogs() {
 
             const time = new Date(mem.created_at).toLocaleTimeString();
 
+            // Detect decision for styling
+            let decisionTag = '';
+            let summaryText = mem.summary;
+
+            if (mem.summary.includes('BUY')) decisionTag = '<span class="decision-tag decision-buy">BUY</span>';
+            else if (mem.summary.includes('SKIP')) decisionTag = '<span class="decision-tag decision-skip">SKIP</span>';
+            else if (mem.summary.includes('SELL')) decisionTag = '<span class="decision-tag decision-sell">SELL</span>';
+
             el.innerHTML = `
                 <div class="log-header">
                     <span class="log-time">[${time}]</span>
                     <span class="log-badge ${mem.type || 'default'}">${(mem.type || 'SYSTEM').toUpperCase()}</span>
                 </div>
-                <div class="log-summary">${mem.summary}</div>
+                <div class="log-summary">${decisionTag}<span class="log-summary-text">${summaryText}</span></div>
                 <div class="log-content">${mem.content}</div>
                 <div class="log-tags">Tags: ${mem.tags ? mem.tags.join(', ') : 'none'}</div>
             `;

@@ -22,20 +22,36 @@ export class SignalService {
 
     private async fetchLatestSignals() {
         try {
-            // 1. Fetch from search with 'pump.fun' to catch bonding curves
-            // 2. Fetch from search with 'solana' for broad trends
-            const queries = ['pump.fun', 'solana'];
-            const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+            // Expanded set of search queries for variety
+            const searchQueries = [
+                'pump.fun',
+                'solana',
+                'moon',
+                'trending',
+                'hype',
+                'alpha',
+                'bonding',
+                'pnut',
+                'ai',
+                'agent'
+            ];
+            const randomQuery = searchQueries[Math.floor(Math.random() * searchQueries.length)];
 
             const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${randomQuery}`);
             const data: any = await response.json();
 
             if (data.pairs && data.pairs.length > 0) {
-                // Filter for solana only and basic sanity
+                // Filter for solana only, avoid SOL/USDC/USDT as base tokens
+                const commonTokens = [
+                    'So11111111111111111111111111111111111111112', // WSOL
+                    'EPjFW31p326ce4fk2wgVqsG49Gst3dewdG977hcadHL8', // USDC
+                    'Es9vMFrzaDCSTyGv98JT2LBqzJ9stZ9dnVryHLp3p25'  // USDT
+                ];
+
                 const validPairs = data.pairs.filter((p: any) =>
                     p.chainId === 'solana' &&
-                    p.baseToken.address !== 'So11111111111111111111111111111111111111112' &&
-                    parseFloat(p.liquidity?.usd || "0") > 5000 // Lowered threshold for earlier discovery
+                    !commonTokens.includes(p.baseToken.address) &&
+                    parseFloat(p.liquidity?.usd || "0") > 2000 // Even lower for ultra-early gems
                 );
 
                 if (validPairs.length > 0) {

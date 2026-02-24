@@ -179,3 +179,37 @@ progress::-webkit-progress-value {
     color: var(--text-secondary);
     font-family: monospace;
 }
+
+/* Decision Highlighting */
+.decision-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+    border: 2px solid transparent;
+}
+
+.decision-buy {
+    background: rgba(63, 185, 80, 0.2);
+    color: #4ade80;
+    border-color: #3fb950;
+}
+
+.decision-skip {
+    background: rgba(139, 148, 158, 0.2);
+    color: #8b949e;
+    border-color: #484f58;
+}
+
+.decision-sell {
+    background: rgba(248, 81, 73, 0.2);
+    color: #ff7b72;
+    border-color: #f85149;
+}
+
+.log-summary-text {
+    vertical-align: middle;
+}
