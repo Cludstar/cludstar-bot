@@ -56,7 +56,13 @@ async function main() {
             console.log("Dream scheduler started.");
         }
 
-        // 5. Start the Web UI API Server
+        // 5. Start Position Monitoring (Profit taking / Stop loss)
+        setInterval(() => {
+            console.log("Triggering scheduled position scan...");
+            agent.scanAndEvaluatePositions();
+        }, 5 * 60000); // Every 5 minutes
+
+        // 6. Start the Web UI API Server
         startServer(brain, walletService.getPublicKey());
 
     } catch (error) {
