@@ -19,8 +19,9 @@ export class SignalService {
     private async fetchTrendingTokens() {
         try {
             // Using DexScreener API as an example for Solana trending
-            // Fetching a popular meme coin like WIF instead of SOL to avoid self-swaps
-            const response = await fetch('https://api.dexscreener.com/latest/dex/search?q=wif');
+            // Using DexScreener API as an example for Solana trending
+            // Fetching a popular meme coin like WIF by its exact contract address to avoid fake, untradable copycats
+            const response = await fetch('https://api.dexscreener.com/latest/dex/tokens/EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm');
             const data: any = await response.json();
 
             if (data.pairs && data.pairs.length > 0) {
