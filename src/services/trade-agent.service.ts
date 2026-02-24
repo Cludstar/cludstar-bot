@@ -49,13 +49,13 @@ Respond with a JSON object in this exact format:
   "reasoning": "A concise 1-sentence explanation of your decision based on the patterns"
 }`;
 
-        console.log("Consulting Claude 3.5 Sonnet for decision...");
+        console.log("Consulting Claude 3 Haiku for decision...");
         let decision = "SKIP";
         let llmReasoning = "Default Fallback";
 
         try {
             const response = await this.anthropic.messages.create({
-                model: 'claude-3-5-sonnet-20240620',
+                model: 'claude-3-haiku-20240307',
                 max_tokens: 200,
                 messages: [{ role: 'user', content: prompt }]
             });
