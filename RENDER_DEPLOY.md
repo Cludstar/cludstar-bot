@@ -22,7 +22,7 @@ I have updated your `package.json` to include a build step.
 Render needs all the secrets from your local `.env` file to run the bot.
 1. Scroll down to the **Environment Variables** section on the Render setup page.
 2. Click **Add Environment Variable** and add the following keys with the values from your local `.env` file:
-   - `RPC_URL` : Your Solana Mainnet RPC URL.
+   - `RPC_URL` : `https://staging.oobeprotocol.ai:8080/rpc?api_key=REDACTED_OOBE_KEY`
    - `BOT_PRIVATE_KEY` : The Base58 private key from your `.env` file.
    - `SUPABASE_URL` : `https://jevjphhathwbfxaytmqw.supabase.co`
    - `SUPABASE_SERVICE_KEY` : `REDACTED_SUPABASE_KEY`
