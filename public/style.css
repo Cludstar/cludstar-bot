@@ -41,6 +41,21 @@ h1 {
     font-weight: 600;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.brand-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 15px rgba(88, 166, 255, 0.3);
+}
+
 .mission-status {
     background: var(--panel-bg);
     padding: 1rem 1.5rem;
