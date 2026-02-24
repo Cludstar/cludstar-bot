@@ -19,25 +19,34 @@ export class SignalService {
     private async fetchTrendingTokens() {
         try {
             // Using DexScreener API as an example for Solana trending
-            // Using DexScreener API as an example for Solana trending
-            // Fetching a popular meme coin like WIF by its exact contract address to avoid fake, untradable copycats
-            const response = await fetch('https://api.dexscreener.com/latest/dex/tokens/EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm');
+            // Fetching top trending pairs on Solana
+            const response = await fetch('https://api.dexscreener.com/latest/dex/search?q=meme');
             const data: any = await response.json();
 
             if (data.pairs && data.pairs.length > 0) {
-                // Take the top trending pair as a signal
-                const topPair = data.pairs[0];
+                // Filter out wrapped SOL to avoid Jupiter self-swaps
+                const validPairs = data.pairs.filter((p: any) =>
+                    p.baseToken.address !== 'So11111111111111111111111111111111111111112' &&
+                    p.chainId === 'solana' &&
+                    parseFloat(p.liquidity?.usd || "0") > 10000 // Ensure some basic liquidity
+                );
 
-                const signal: TradeSignal = {
-                    tokenAddress: topPair.baseToken.address,
-                    symbol: topPair.baseToken.symbol,
-                    reasoning: `High volume spike detected on DexScreener. 24h Vol: ${topPair.volume?.h24 || 0}`,
-                    volume24h: topPair.volume?.h24,
-                    priceUsd: parseFloat(topPair.priceUsd)
-                };
+                if (validPairs.length > 0) {
+                    // Pick a random token from the top 10 trending valid pairs
+                    const maxIndex = Math.min(10, validPairs.length);
+                    const randomPair = validPairs[Math.floor(Math.random() * maxIndex)];
 
-                // Pass the signal to the Clude Agent
-                await this.agent.evaluateSignal(signal);
+                    const signal: TradeSignal = {
+                        tokenAddress: randomPair.baseToken.address,
+                        symbol: randomPair.baseToken.symbol,
+                        reasoning: `High volume meme token detected on DexScreener. 24h Vol: $${randomPair.volume?.h24 || 0}. Liquidity: $${randomPair.liquidity?.usd || 0}`,
+                        volume24h: randomPair.volume?.h24,
+                        priceUsd: parseFloat(randomPair.priceUsd)
+                    };
+
+                    // Pass the signal to the Clude Agent
+                    await this.agent.evaluateSignal(signal);
+                }
             }
         } catch (error) {
             console.error("Error fetching signals:", error);
