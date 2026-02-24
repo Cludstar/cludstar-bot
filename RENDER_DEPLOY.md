@@ -26,7 +26,7 @@ Render needs all the secrets from your local `.env` file to run the bot.
    - `BOT_PRIVATE_KEY` : The Base58 private key from your `.env` file.
    - `SUPABASE_URL` : `https://jevjphhathwbfxaytmqw.supabase.co`
    - `SUPABASE_SERVICE_KEY` : `REDACTED_SUPABASE_KEY`
-   - `ANTHROPIC_API_KEY` : Your Anthropic API Key (if you are using the dream cycle features - leave blank if not).
+   - `ANTHROPIC_API_KEY` : `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`
 
 ### Step 4: Deploy!
 Click **Create Web Service**. Render will automatically clone your repo, install dependencies, compile the TypeScript, and start the bot. 
