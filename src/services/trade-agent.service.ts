@@ -1,6 +1,6 @@
 import { Cortex } from 'clude-bot';
 import Anthropic from '@anthropic-ai/sdk';
-import { Connection, Keypair, Transaction, SystemProgram, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
 
 export interface TradeSignal {
     tokenAddress: string;
@@ -97,31 +97,70 @@ Respond with a JSON object in this exact format:
     }
 
     private async executeTrade(signal: TradeSignal) {
-        console.log(`Executing trade for ${signal.symbol}...`);
+        console.log(`Executing Jupiter swap for ${signal.symbol}...`);
 
         let txHash = "pending...";
         try {
-            // Execute a real on-chain transaction (0 SOL self-transfer) to represent the trade and get a TX Hash
-            const tx = new Transaction().add(
-                SystemProgram.transfer({
-                    fromPubkey: this.wallet.publicKey,
-                    toPubkey: this.wallet.publicKey,
-                    lamports: 0,
-                })
-            );
+            // Amount to buy per trade (e.g. 0.005 SOL just to be safe during live automation testing)
+            const amountLamports = 5000000;
 
-            txHash = await sendAndConfirmTransaction(this.connection, tx, [this.wallet]);
-            console.log(`Trade executed on-chain! TX Hash: ${txHash}`);
+            // 1. Fetch quote from Jupiter V6
+            const quoteResponse = await (
+                await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${signal.tokenAddress}&amount=${amountLamports}&slippageBps=50`)
+            ).json();
+
+            if (quoteResponse.error) {
+                throw new Error(`Jupiter Quote Error: ${quoteResponse.error}`);
+            }
+
+            // 2. Fetch serialized swap transaction from Jupiter
+            const { swapTransaction } = await (
+                await fetch('https://quote-api.jup.ag/v6/swap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quoteResponse,
+                        userPublicKey: this.wallet.publicKey.toString(),
+                        wrapAndUnwrapSol: true,
+                    })
+                })
+            ).json();
+
+            if (!swapTransaction) {
+                throw new Error('Failed to retrieve swapTransaction from Jupiter');
+            }
+
+            // 3. Deserialize and sign
+            const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
+            const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+            transaction.sign([this.wallet]);
+
+            // 4. Send and confirm on-chain
+            const rawTransaction = transaction.serialize();
+            txHash = await this.connection.sendRawTransaction(rawTransaction, {
+                skipPreflight: true,
+                maxRetries: 2
+            });
+
+            // Optional: wait for confirmation to ensure it landed
+            const blockhash = await this.connection.getLatestBlockhash();
+            await this.connection.confirmTransaction({
+                blockhash: blockhash.blockhash,
+                lastValidBlockHeight: blockhash.lastValidBlockHeight,
+                signature: txHash
+            });
+
+            console.log(`Real Jupiter Trade executed! TX Hash: ${txHash}`);
         } catch (error: any) {
-            console.error("Trade execution failed:", error.message);
+            console.error("Real Trade execution failed:", error.message);
             txHash = `FAILED_TX_${Date.now()}`;
         }
 
-        // Store trade success with the TX Hash
+        // Store trade success/failure with the TX Hash in Clude
         await this.brain.store({
             type: 'episodic',
-            content: `Successfully bought ${signal.symbol}. Real TX Hash for this simulated order: ${txHash}.`,
-            summary: `Executed BUY on ${signal.symbol} (TX: ${txHash.slice(0, 8)}...)`,
+            content: `Attempted to buy ${signal.symbol}. Real Jupiter Swap TX Hash: ${txHash}.`,
+            summary: `Jupiter BUY on ${signal.symbol} (TX: ${txHash.slice(0, 8)}...)`,
             tags: ['trade_execution', 'buy', signal.symbol, txHash],
             source: 'TradeAgent'
         });
