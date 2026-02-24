@@ -57,7 +57,7 @@ async function main() {
         }
 
         // 5. Start the Web UI API Server
-        startServer(brain);
+        startServer(brain, walletService.getPublicKey());
 
     } catch (error) {
         console.error("Failed to initialize system:", error);

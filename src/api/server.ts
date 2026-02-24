@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { Cortex } from 'clude-bot';
+import { Connection, PublicKey } from '@solana/web3.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -13,7 +14,9 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../public')));
 
 // Requires brain to be passed in from main initialization
-export function startServer(brain: Cortex) {
+export function startServer(brain: Cortex, walletPublicKey: string) {
+    const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
+    const pubKey = new PublicKey(walletPublicKey);
 
     app.get('/api/trades', async (req, res) => {
         try {
@@ -26,11 +29,17 @@ export function startServer(brain: Cortex) {
     });
 
     app.get('/api/mission', async (req, res) => {
-        // In a real app this would fetch the current wallet balance instead of a static number
-        res.json({
-            currentBalance: 1.5,
-            targetBalance: 100
-        });
+        try {
+            const lamports = await connection.getBalance(pubKey);
+            const sol = lamports / 1e9;
+            res.json({
+                currentBalance: parseFloat(sol.toFixed(4)),
+                targetBalance: 100
+            });
+        } catch (error: any) {
+            console.error("Failed to fetch balance:", error);
+            res.status(500).json({ error: error.message });
+        }
     });
 
     app.listen(port, () => {
