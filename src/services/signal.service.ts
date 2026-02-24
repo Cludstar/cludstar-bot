@@ -10,15 +10,67 @@ export class SignalService {
     async startMonitoring() {
         console.log("Starting high-frequency signal monitor (3-7s intervals)...");
 
-        const runLoop = async () => {
+        const searchLoop = async () => {
             await this.fetchLatestSignals();
-
             // Random interval between 3-7 seconds to avoid rate limits and simulate real-time
             const nextInterval = Math.floor(Math.random() * (7000 - 3000 + 1)) + 3000;
-            setTimeout(runLoop, nextInterval);
+            setTimeout(searchLoop, nextInterval);
         };
 
-        runLoop();
+        const newListingsLoop = async () => {
+            await this.fetchNewListings();
+            // Check for brand new migrated/listed pairs every 15 seconds
+            setTimeout(newListingsLoop, 15000);
+        };
+
+        searchLoop();
+        newListingsLoop();
+    }
+
+    private async fetchNewListings() {
+        try {
+            console.log("Fetching latest token profiles (New Listings)...");
+            const response = await fetch('https://api.dexscreener.com/token-profiles/latest/v1');
+            const data: any = await response.json();
+
+            // data from this endpoint is an array of token profiles
+            if (Array.isArray(data) && data.length > 0) {
+                const newSolanaTokens = data.filter((t: any) =>
+                    t.chainId === 'solana' &&
+                    t.tokenAddress &&
+                    !this.recentTokens.has(t.tokenAddress)
+                );
+
+                if (newSolanaTokens.length > 0) {
+                    // Pick the very newest one
+                    const newestToken = newSolanaTokens[0];
+                    this.recentTokens.add(newestToken.tokenAddress);
+
+                    // To evaluate it, we need to fetch its actual pair data (price/liquidity)
+                    // since the profile API only returns metadata (links, desc).
+                    const pairResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${newestToken.tokenAddress}`);
+                    const pairData: any = await pairResponse.json();
+
+                    if (pairData.pairs && pairData.pairs.length > 0) {
+                        const targetPair = pairData.pairs[0];
+                        const isPumpFun = targetPair.dexId === 'pump-fun' || targetPair.dexId === 'pumpfun';
+
+                        const signal: TradeSignal = {
+                            tokenAddress: targetPair.baseToken.address,
+                            symbol: targetPair.baseToken.symbol,
+                            reasoning: `💥 ULTRA-EARLY ALERT: Newly listed/migrated token. Liq: $${targetPair.liquidity?.usd || 0}.`,
+                            volume24h: targetPair.volume?.h24,
+                            priceUsd: parseFloat(targetPair.priceUsd),
+                            isPumpFun: isPumpFun
+                        };
+
+                        await this.agent.evaluateSignal(signal);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("New Listings ingestion encountered an error:", error);
+        }
     }
 
     private async fetchLatestSignals() {
