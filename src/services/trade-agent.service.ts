@@ -70,9 +70,8 @@ Respond with a JSON object in this exact format:
             const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
-                // FORCE BUY FOR TESTING
-                decision = 'BUY';
-                llmReasoning = "Testing forced buy for specific token requested by user.";
+                decision = parsed.decision === 'BUY' ? 'BUY' : 'SKIP';
+                llmReasoning = parsed.reasoning || "No reasoning provided by LLM.";
             } else {
                 llmReasoning = "Failed to parse JSON from LLM: " + responseText;
             }
