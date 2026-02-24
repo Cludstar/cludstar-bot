@@ -1,4 +1,5 @@
 import { Cortex } from 'clude-bot';
+import Anthropic from '@anthropic-ai/sdk';
 
 export interface TradeSignal {
     tokenAddress: string;
@@ -12,9 +13,13 @@ export interface TradeSignal {
 export class TradeAgentService {
     private brain: Cortex;
     private targetBalance: number = 100;
+    private anthropic: Anthropic;
 
     constructor(brain: Cortex) {
         this.brain = brain;
+        this.anthropic = new Anthropic({
+            apiKey: process.env.ANTHROPIC_API_KEY || '',
+        });
     }
 
     async evaluateSignal(signal: TradeSignal) {
@@ -28,12 +33,49 @@ export class TradeAgentService {
 
         const context = this.brain.formatContext(memories);
 
-        // Here we would normally make an LLM call using the context
-        // to decide whether to Buy or Skip.
-        const decision = "MOCK_BUY";
-        const llmReasoning = "Based on past memories, this token has similar momentum to previous successful trades.";
+        // Make an LLM call using the context to decide whether to Buy or Skip.
+        const prompt = `You are an autonomous Solana trading agent.
+Your goal is to grow the portfolio from 1 SOL to 100 SOL.
+Here is the new incoming signal data:
+${JSON.stringify(signal)}
 
-        console.log(`Decision: ${decision}`);
+Here are some relevant past trading memories:
+${context}
+
+Based on this information, should you BUY or SKIP this token?
+Respond with a JSON object in this exact format:
+{
+  "decision": "BUY" | "SKIP",
+  "reasoning": "A concise 1-sentence explanation of your decision based on the patterns"
+}`;
+
+        console.log("Consulting Claude 3.5 Sonnet for decision...");
+        let decision = "SKIP";
+        let llmReasoning = "Default Fallback";
+
+        try {
+            const response = await this.anthropic.messages.create({
+                model: 'claude-3-5-sonnet-20241022',
+                max_tokens: 200,
+                messages: [{ role: 'user', content: prompt }]
+            });
+            const responseText = (response.content[0] as any).text;
+
+            // Extract JSON from Claude's response
+            const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                decision = parsed.decision === 'BUY' ? 'BUY' : 'SKIP';
+                llmReasoning = parsed.reasoning || "No reasoning provided by LLM.";
+            } else {
+                llmReasoning = "Failed to parse JSON from LLM: " + responseText;
+            }
+        } catch (err: any) {
+            console.error("LLM Generation Error:", err.message);
+            llmReasoning = `Error querying Anthropic API: ${err.message}`;
+        }
+
+        console.log(`Decision: ${decision}\nReason: ${llmReasoning}`);
 
         // 2. Store the reasoning and decision
         await this.brain.store({
@@ -44,7 +86,7 @@ export class TradeAgentService {
             source: 'TradeAgent'
         });
 
-        if (decision === 'MOCK_BUY') {
+        if (decision === 'BUY') {
             await this.executeTrade(signal);
         }
     }
