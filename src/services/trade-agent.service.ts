@@ -106,7 +106,7 @@ Respond with a JSON object in this exact format:
 
             // 1. Fetch quote from Jupiter V6
             const quoteResponse = await (
-                await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${signal.tokenAddress}&amount=${amountLamports}&slippageBps=50`)
+                await fetch(`https://public.jupiterapi.com/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${signal.tokenAddress}&amount=${amountLamports}&slippageBps=50`)
             ).json();
 
             if (quoteResponse.error) {
@@ -115,7 +115,7 @@ Respond with a JSON object in this exact format:
 
             // 2. Fetch serialized swap transaction from Jupiter
             const { swapTransaction } = await (
-                await fetch('https://quote-api.jup.ag/v6/swap', {
+                await fetch('https://public.jupiterapi.com/swap', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
