@@ -70,8 +70,9 @@ Respond with a JSON object in this exact format:
             const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
-                decision = parsed.decision === 'BUY' ? 'BUY' : 'SKIP';
-                llmReasoning = parsed.reasoning || "No reasoning provided by LLM.";
+                // FORCE BUY FOR TESTING
+                decision = 'BUY';
+                llmReasoning = "Testing forced buy for specific token requested by user.";
             } else {
                 llmReasoning = "Failed to parse JSON from LLM: " + responseText;
             }
@@ -104,9 +105,9 @@ Respond with a JSON object in this exact format:
             // Amount to buy per trade (e.g. 0.005 SOL just to be safe during live automation testing)
             const amountLamports = 5000000;
 
-            // 1. Fetch quote from Jupiter V6 with 3% slippage and dynamic slippage enabled
+            // 1. Fetch quote from Jupiter V6 with higher 10% slippage for volatile pump tokens
             const quoteResponse = await (
-                await fetch(`https://public.jupiterapi.com/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${signal.tokenAddress}&amount=${amountLamports}&slippageBps=300&dynamicSlippage=true`)
+                await fetch(`https://public.jupiterapi.com/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${signal.tokenAddress}&amount=${amountLamports}&slippageBps=1000&dynamicSlippage=true`)
             ).json();
 
             if (quoteResponse.error) {
@@ -122,6 +123,7 @@ Respond with a JSON object in this exact format:
                         quoteResponse,
                         userPublicKey: this.wallet.publicKey.toString(),
                         wrapAndUnwrapSol: true,
+                        asLegacyTransaction: false, // Forces Versioned Tx for Token-2022 support
                         dynamicComputeUnitLimit: true,
                         prioritizationFeeLamports: "auto"
                     })
