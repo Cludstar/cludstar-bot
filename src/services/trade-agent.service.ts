@@ -105,9 +105,9 @@ Respond with a JSON object in this exact format:
             // Amount to buy per trade (e.g. 0.005 SOL just to be safe during live automation testing)
             const amountLamports = 5000000;
 
-            // 1. Fetch quote from Jupiter V6 with higher 10% slippage for volatile pump tokens
+            // 1. Fetch quote from Jupiter V6 with strict 50% slippage for volatile tokens, avoiding dynamic optimizer overrides
             const quoteResponse = await (
-                await fetch(`https://public.jupiterapi.com/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${signal.tokenAddress}&amount=${amountLamports}&slippageBps=1000&dynamicSlippage=true`)
+                await fetch(`https://public.jupiterapi.com/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${signal.tokenAddress}&amount=${amountLamports}&slippageBps=5000`)
             ).json();
 
             if (quoteResponse.error) {
