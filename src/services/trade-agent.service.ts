@@ -485,7 +485,22 @@ Respond with a JSON object in this exact format:
             console.log(`SELL executed! TX: ${txHash}`);
         } catch (e: any) {
             console.error(`Sell failed for ${symbol}:`, e.message);
-            txHash = `FAILED: ${e.message}`;
+
+            // Check if it's a "No routes found" error (Common when Liquidity is removed / Rug Pull)
+            if (e.message.toLowerCase().includes('route')) {
+                txHash = `FAILED_NO_LIQUIDITY`;
+                // Create a very distinct memory for the Dream cycle to pick up
+                await this.brain.store({
+                    type: 'episodic',
+                    content: `Severe Failure: Attempted to sell ${symbol} (${mint}) but received 'No routes found'. This typically means liquidity was completely removed (Rug Pull).`,
+                    summary: `RUG PULL DETECTED: ${symbol} Liquidity Removed`,
+                    tags: ['trade_execution', 'sell', 'rug_pull', symbol, 'FAILED_NO_LIQUIDITY'],
+                    source: 'TradeAgent'
+                });
+                return; // Exit early since we already stored the specific memory
+            } else {
+                txHash = `FAILED: ${e.message}`;
+            }
         }
 
         await this.brain.store({
