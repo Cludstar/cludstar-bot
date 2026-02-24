@@ -5,51 +5,60 @@ export class SignalService {
 
     constructor(private agent: TradeAgentService) { }
 
-    // Mocking an ingestion pipeline from DexScreener and PumpFun
+    // Dynamic ingestion pipeline for high-frequency signals
     async startMonitoring() {
-        console.log("Starting signal monitor...");
+        console.log("Starting high-frequency signal monitor (3-7s intervals)...");
 
-        // Simulating a cron job or WebSocket stream
-        setInterval(() => this.fetchTrendingTokens(), 60000); // Check every minute
+        const runLoop = async () => {
+            await this.fetchLatestSignals();
 
-        // Fetch immediately on startup
-        this.fetchTrendingTokens();
+            // Random interval between 3-7 seconds to avoid rate limits and simulate real-time
+            const nextInterval = Math.floor(Math.random() * (7000 - 3000 + 1)) + 3000;
+            setTimeout(runLoop, nextInterval);
+        };
+
+        runLoop();
     }
 
-    private async fetchTrendingTokens() {
+    private async fetchLatestSignals() {
         try {
-            // Using DexScreener API as an example for Solana trending
-            // Fetching top trending pairs on Solana
-            const response = await fetch('https://api.dexscreener.com/latest/dex/search?q=meme');
+            // 1. Fetch from search with 'pump.fun' to catch bonding curves
+            // 2. Fetch from search with 'solana' for broad trends
+            const queries = ['pump.fun', 'solana'];
+            const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+
+            const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${randomQuery}`);
             const data: any = await response.json();
 
             if (data.pairs && data.pairs.length > 0) {
-                // Filter out wrapped SOL to avoid Jupiter self-swaps
+                // Filter for solana only and basic sanity
                 const validPairs = data.pairs.filter((p: any) =>
-                    p.baseToken.address !== 'So11111111111111111111111111111111111111112' &&
                     p.chainId === 'solana' &&
-                    parseFloat(p.liquidity?.usd || "0") > 10000 // Ensure some basic liquidity
+                    p.baseToken.address !== 'So11111111111111111111111111111111111111112' &&
+                    parseFloat(p.liquidity?.usd || "0") > 5000 // Lowered threshold for earlier discovery
                 );
 
                 if (validPairs.length > 0) {
-                    // Pick a random token from the top 10 trending valid pairs
-                    const maxIndex = Math.min(10, validPairs.length);
-                    const randomPair = validPairs[Math.floor(Math.random() * maxIndex)];
+                    // Sort by volume or recently created to find the hottest/newest
+                    const hottest = validPairs.sort((a: any, b: any) =>
+                        (b.volume?.h1 || 0) - (a.volume?.h1 || 0)
+                    ).slice(0, 10);
+
+                    const targetPair = hottest[Math.floor(Math.random() * hottest.length)];
 
                     const signal: TradeSignal = {
-                        tokenAddress: randomPair.baseToken.address,
-                        symbol: randomPair.baseToken.symbol,
-                        reasoning: `High volume meme token detected on DexScreener. 24h Vol: $${randomPair.volume?.h24 || 0}. Liquidity: $${randomPair.liquidity?.usd || 0}`,
-                        volume24h: randomPair.volume?.h24,
-                        priceUsd: parseFloat(randomPair.priceUsd)
+                        tokenAddress: targetPair.baseToken.address,
+                        symbol: targetPair.baseToken.symbol,
+                        reasoning: `Real-time discovery via ${targetPair.dexId}. Vol(1h): $${targetPair.volume?.h1 || 0}. Liq: $${targetPair.liquidity?.usd || 0}`,
+                        volume24h: targetPair.volume?.h24,
+                        priceUsd: parseFloat(targetPair.priceUsd)
                     };
 
-                    // Pass the signal to the Clude Agent
                     await this.agent.evaluateSignal(signal);
                 }
             }
         } catch (error) {
-            console.error("Error fetching signals:", error);
+            console.error("Signal ingestion encountered an error:", error);
         }
     }
 }
