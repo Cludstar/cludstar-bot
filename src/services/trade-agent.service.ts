@@ -180,14 +180,14 @@ Respond with a JSON object in this exact format:
             console.log(`Real Jupiter Trade executed! TX Hash: ${txHash}`);
         } catch (error: any) {
             console.error("Real Trade execution failed:", error.message);
-            txHash = `FAILED_TX_${Date.now()}`;
+            txHash = `FAILED: ${error.message}`;
         }
 
-        // Store trade success/failure with the TX Hash in Clude
+        // Store trade success/failure with the TX Hash or Error in Clude
         await this.brain.store({
             type: 'episodic',
-            content: `Attempted to buy ${signal.symbol}. Real Jupiter Swap TX Hash: ${txHash}.`,
-            summary: `Jupiter BUY on ${signal.symbol} (TX: ${txHash.slice(0, 8)}...)`,
+            content: `Attempted to buy ${signal.symbol}. Status: ${txHash}.`,
+            summary: `Jupiter BUY on ${signal.symbol} (${txHash.startsWith('FAILED') ? 'FAIL' : 'SUCCESS'})`,
             tags: ['trade_execution', 'buy', signal.symbol, txHash],
             source: 'TradeAgent'
         });
@@ -350,13 +350,13 @@ Respond with a JSON object in this exact format:
             console.log(`SELL executed! TX: ${txHash}`);
         } catch (e: any) {
             console.error(`Sell failed for ${symbol}:`, e.message);
-            txHash = `FAILED_SELL_${Date.now()}`;
+            txHash = `FAILED: ${e.message}`;
         }
 
         await this.brain.store({
             type: 'procedural',
-            content: `Sold ${amount} of ${symbol} (${mint}). Reasoning: ${reasoning}. TX: ${txHash}`,
-            summary: `SELL ${symbol}`,
+            content: `Attempted to sell ${amount} of ${symbol} (${mint}). Status: ${txHash}. Reasoning: ${reasoning}`,
+            summary: `SELL ${symbol} (${txHash.startsWith('FAILED') ? 'FAIL' : 'SUCCESS'})`,
             tags: ['trade_execution', 'sell', symbol, txHash],
             source: 'TradeAgent'
         });
