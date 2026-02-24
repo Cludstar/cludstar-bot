@@ -2,6 +2,7 @@ import fetch from 'node-fetch';
 import { TradeAgentService, TradeSignal } from './trade-agent.service';
 
 export class SignalService {
+    private recentTokens = new Set<string>();
 
     constructor(private agent: TradeAgentService) { }
 
@@ -61,18 +62,23 @@ export class SignalService {
                     return p.chainId === 'solana' &&
                         !commonTokenAddresses.includes(p.baseToken.address) &&
                         !isImposter &&
+                        !this.recentTokens.has(p.baseToken.address) && // Prevent analyzing the same token constantly
                         // "De-gen Discovery": even lower floor for pump.fun specific queries
                         parseFloat(p.liquidity?.usd || "0") > (randomQuery === 'pump.fun' ? 500 : 2000);
                 });
 
                 if (validPairs.length > 0) {
-                    // Prioritize tokens with high activity (txns) even if liquidity is low
-                    const candidates = validPairs.sort((a: any) => {
-                        const scoreA = (a.txns?.m5?.buys || 0) + (a.volume?.m5 || 0);
-                        return -1; // Keep it somewhat random but biased to recent activity
-                    }).slice(0, 10);
+                    // Pick completely at random from all valid, unseen pairs to maximize variety
+                    const targetPair = validPairs[Math.floor(Math.random() * validPairs.length)];
 
-                    const targetPair = candidates[Math.floor(Math.random() * candidates.length)];
+                    // Add to our rolling cache so we don't look at it again soon
+                    this.recentTokens.add(targetPair.baseToken.address);
+
+                    // Simple memory management for the cache
+                    if (this.recentTokens.size > 500) {
+                        const items = Array.from(this.recentTokens);
+                        this.recentTokens = new Set(items.slice(250));
+                    }
 
                     const isPumpFun = targetPair.dexId === 'pump-fun' || targetPair.dexId === 'pumpfun';
 
