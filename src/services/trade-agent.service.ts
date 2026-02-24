@@ -2,6 +2,7 @@ import { Cortex } from 'clude-bot';
 import Anthropic from '@anthropic-ai/sdk';
 import { Connection, Keypair, VersionedTransaction, PublicKey } from '@solana/web3.js';
 import fetch from 'node-fetch';
+import { RugCheckService } from './rugcheck.service';
 
 export interface TradeSignal {
     tokenAddress: string;
@@ -19,6 +20,7 @@ export class TradeAgentService {
     private anthropic: Anthropic;
     private wallet: Keypair;
     private connection: Connection;
+    private rugCheck: RugCheckService;
 
     constructor(brain: Cortex, wallet: Keypair) {
         this.brain = brain;
@@ -27,10 +29,28 @@ export class TradeAgentService {
         this.anthropic = new Anthropic({
             apiKey: process.env.ANTHROPIC_API_KEY || '',
         });
+        this.rugCheck = new RugCheckService();
     }
 
     async evaluateSignal(signal: TradeSignal) {
         console.log(`Evaluating signal for ${signal.symbol}...`);
+
+        // 0. VETO LAYER: Contract Auditing (Triangulation)
+        const rugCheckResult = await this.rugCheck.isTokenSafe(signal.tokenAddress);
+
+        if (!rugCheckResult.isSafe) {
+            console.log(`[VETO] Signal rejected by RugCheck. Risks: ${rugCheckResult.risks.join(', ')}`);
+            await this.brain.store({
+                type: 'procedural',
+                content: `Signal rejected for ${signal.symbol} due to severe contract risks: ${rugCheckResult.risks.join(', ')}. Score: ${rugCheckResult.score}`,
+                summary: `VETO: ${signal.symbol} (RugCheck Failed)`,
+                tags: ['trade_decision', signal.symbol, 'SKIP', 'rug_veto'],
+                source: 'TradeAgent'
+            });
+            return; // Exit early, save LLM tokens and avoid honeypots
+        }
+
+        signal.reasoning += ` | RugCheck Pass. Risks: ${rugCheckResult.risks.length > 0 ? rugCheckResult.risks.join(', ') : 'None'}.`;
 
         // 1. Fetch current wallet balance
         const balanceLamports = await this.connection.getBalance(this.wallet.publicKey);
@@ -52,7 +72,7 @@ Current Portfolio Status:
 - Wallet Balance: ${balanceSol.toFixed(4)} SOL
 - Target: ${this.targetBalance} SOL
 
-Incoming Signal:
+Incoming Signal (Audited for safety):
 ${JSON.stringify(signal)}
 
 Here are some relevant past trading memories:
