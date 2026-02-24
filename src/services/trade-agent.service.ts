@@ -55,7 +55,7 @@ Respond with a JSON object in this exact format:
 
         try {
             const response = await this.anthropic.messages.create({
-                model: 'claude-3-5-sonnet-20241022',
+                model: 'claude-3-5-sonnet-20240620',
                 max_tokens: 200,
                 messages: [{ role: 'user', content: prompt }]
             });

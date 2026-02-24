@@ -35,7 +35,7 @@ async function fetchLogs() {
             el.innerHTML = `
                 <div class="log-header">
                     <span class="log-time">[${time}]</span>
-                    <span class="log-badge ${mem.type}">${mem.type.toUpperCase()}</span>
+                    <span class="log-badge ${mem.type || 'default'}">${(mem.type || 'SYSTEM').toUpperCase()}</span>
                 </div>
                 <div class="log-summary">${mem.summary}</div>
                 <div class="log-content">${mem.content}</div>
