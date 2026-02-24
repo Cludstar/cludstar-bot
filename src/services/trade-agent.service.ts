@@ -122,6 +122,8 @@ Respond with a JSON object in this exact format:
                         quoteResponse,
                         userPublicKey: this.wallet.publicKey.toString(),
                         wrapAndUnwrapSol: true,
+                        dynamicComputeUnitLimit: true,
+                        prioritizationFeeLamports: "auto"
                     })
                 })
             ).json();
