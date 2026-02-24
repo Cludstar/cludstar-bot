@@ -41,7 +41,7 @@ export class SignalService {
             const data: any = await response.json();
 
             if (data.pairs && data.pairs.length > 0) {
-                // Filter for solana only, avoid SOL/USDC/USDT as base tokens
+                // Filter for solana only, avoid stablecoins
                 const commonTokens = [
                     'So11111111111111111111111111111111111111112', // WSOL
                     'EPjFW31p326ce4fk2wgVqsG49Gst3dewdG977hcadHL8', // USDC
@@ -51,23 +51,28 @@ export class SignalService {
                 const validPairs = data.pairs.filter((p: any) =>
                     p.chainId === 'solana' &&
                     !commonTokens.includes(p.baseToken.address) &&
-                    parseFloat(p.liquidity?.usd || "0") > 2000 // Even lower for ultra-early gems
+                    // "De-gen Discovery": even lower floor for pump.fun specific queries
+                    parseFloat(p.liquidity?.usd || "0") > (randomQuery === 'pump.fun' ? 500 : 2000)
                 );
 
                 if (validPairs.length > 0) {
-                    // Sort by volume or recently created to find the hottest/newest
-                    const hottest = validPairs.sort((a: any, b: any) =>
-                        (b.volume?.h1 || 0) - (a.volume?.h1 || 0)
-                    ).slice(0, 10);
+                    // Prioritize tokens with high activity (txns) even if liquidity is low
+                    const candidates = validPairs.sort((a: any) => {
+                        const scoreA = (a.txns?.m5?.buys || 0) + (a.volume?.m5 || 0);
+                        return -1; // Keep it somewhat random but biased to recent activity
+                    }).slice(0, 10);
 
-                    const targetPair = hottest[Math.floor(Math.random() * hottest.length)];
+                    const targetPair = candidates[Math.floor(Math.random() * candidates.length)];
+
+                    const isPumpFun = targetPair.dexId === 'pump-fun' || targetPair.dexId === 'pumpfun';
 
                     const signal: TradeSignal = {
                         tokenAddress: targetPair.baseToken.address,
                         symbol: targetPair.baseToken.symbol,
-                        reasoning: `Real-time discovery via ${targetPair.dexId}. Vol(1h): $${targetPair.volume?.h1 || 0}. Liq: $${targetPair.liquidity?.usd || 0}`,
+                        reasoning: `De-gen discovery on ${targetPair.dexId}. Liq: $${targetPair.liquidity?.usd || 0}. 5m Buys: ${targetPair.txns?.m5?.buys || 0}`,
                         volume24h: targetPair.volume?.h24,
-                        priceUsd: parseFloat(targetPair.priceUsd)
+                        priceUsd: parseFloat(targetPair.priceUsd),
+                        isPumpFun: isPumpFun
                     };
 
                     await this.agent.evaluateSignal(signal);

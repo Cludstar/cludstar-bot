@@ -10,6 +10,7 @@ export interface TradeSignal {
     volume24h?: number;
     priceUsd?: number;
     sentimentScore?: number;
+    isPumpFun?: boolean;
 }
 
 export class TradeAgentService {
@@ -114,8 +115,71 @@ Respond with a JSON object in this exact format:
         });
 
         if (decision === 'BUY' && amountSol > 0) {
-            await this.executeTrade(signal, amountSol);
+            if (signal.isPumpFun) {
+                await this.executePumpFunTrade(signal, amountSol);
+            } else {
+                await this.executeTrade(signal, amountSol);
+            }
         }
+    }
+
+    private async executePumpFunTrade(signal: TradeSignal, amountSol: number) {
+        console.log(`Executing direct Pump.fun swap via PumpPortal for ${signal.symbol} with ${amountSol} SOL...`);
+        let txHash = "pending...";
+
+        try {
+            // Using PumpPortal's local transaction API for serialized transaction
+            const response = await fetch(`https://pumpportal.fun/api/trade-local`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    publicKey: this.wallet.publicKey.toString(),
+                    action: "buy",
+                    mint: signal.tokenAddress,
+                    amount: amountSol,
+                    denominatedInSol: "true",
+                    slippage: 10,
+                    priorityFee: 0.005,
+                    pool: "pump"
+                })
+            });
+
+            if (response.status !== 200) {
+                const errorText = await response.text();
+                throw new Error(`PumpPortal API Error: ${errorText}`);
+            }
+
+            const txBuffer = Buffer.from(await response.arrayBuffer());
+            const transaction = VersionedTransaction.deserialize(txBuffer);
+            transaction.sign([this.wallet]);
+
+            const rawTransaction = transaction.serialize();
+            txHash = await this.connection.sendRawTransaction(rawTransaction, {
+                skipPreflight: true,
+                maxRetries: 2
+            });
+
+            // Confirmation
+            const blockhash = await this.connection.getLatestBlockhash();
+            await this.connection.confirmTransaction({
+                blockhash: blockhash.blockhash,
+                lastValidBlockHeight: blockhash.lastValidBlockHeight,
+                signature: txHash
+            });
+
+            console.log(`Pump.fun Trade executed! TX Hash: ${txHash}`);
+        } catch (error: any) {
+            console.error("Pump.fun Trade execution failed:", error.message);
+            txHash = `FAILED: ${error.message}`;
+        }
+
+        await this.brain.store({
+            type: 'episodic',
+            content: `Attempted to buy ${signal.symbol} on Pump.fun. Status: ${txHash}.`,
+            summary: `Pump.fun BUY on ${signal.symbol} (${txHash.startsWith('FAILED') ? 'FAIL' : 'SUCCESS'})`,
+            tags: ['trade_execution', 'buy', signal.symbol, txHash, 'pumpfun'],
+            source: 'TradeAgent'
+        });
     }
 
     private async executeTrade(signal: TradeSignal, amountSol: number) {
@@ -255,13 +319,13 @@ Respond with a JSON object in this exact format:
 
         const entryContext = memories.length > 0 ? this.brain.formatContext(memories) : "No entry memory found.";
 
-        // 2. Get current price (Mocking price fetch for now or using DexScreener if we had symbol)
-        // For simplicity, we'll try to fetch symbol/price from DexScreener
+        // 2. Get current price and platform info
         const dexResp = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
         const dexData: any = await dexResp.json();
         const pair = dexData.pairs?.[0];
         const currentPrice = pair ? parseFloat(pair.priceUsd) : 0;
         const symbol = pair ? pair.baseToken.symbol : mint.slice(0, 4);
+        const isPumpFun = pair?.dexId === 'pump-fun' || pair?.dexId === 'pumpfun';
 
         const prompt = `You are an autonomous Solana trading agent.
 Current Position:
@@ -300,12 +364,63 @@ Respond with a JSON object in this exact format:
                 if (parsed.decision === 'SELL' && parsed.amountToken > 0) {
                     const sellAmount = Math.min(parsed.amountToken, balance);
                     console.log(`Executing SELL for ${symbol}: ${sellAmount}`);
-                    await this.executeSell(mint, symbol, sellAmount, parsed.reasoning);
+                    if (isPumpFun) {
+                        await this.executePumpFunSell(mint, symbol, sellAmount, parsed.reasoning);
+                    } else {
+                        await this.executeSell(mint, symbol, sellAmount, parsed.reasoning);
+                    }
                 }
             }
         } catch (err: any) {
             console.error("Sell evaluation error:", err.message);
         }
+    }
+
+    private async executePumpFunSell(mint: string, symbol: string, amount: number, reasoning: string) {
+        console.log(`Executing direct Pump.fun SELL via PumpPortal for ${symbol}...`);
+        let txHash = "pending...";
+
+        try {
+            const response = await fetch(`https://pumpportal.fun/api/trade-local`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    publicKey: this.wallet.publicKey.toString(),
+                    action: "sell",
+                    mint: mint,
+                    amount: amount,
+                    denominatedInSol: "false", // We are selling token amount
+                    slippage: 10,
+                    priorityFee: 0.005,
+                    pool: "pump"
+                })
+            });
+
+            if (response.status !== 200) {
+                const errorText = await response.text();
+                throw new Error(`PumpPortal API Error: ${errorText}`);
+            }
+
+            const txBuffer = Buffer.from(await response.arrayBuffer());
+            const transaction = VersionedTransaction.deserialize(txBuffer);
+            transaction.sign([this.wallet]);
+
+            const rawTransaction = transaction.serialize();
+            txHash = await this.connection.sendRawTransaction(rawTransaction, { skipPreflight: true });
+
+            console.log(`Pump.fun SELL executed! TX Hash: ${txHash}`);
+        } catch (error: any) {
+            console.error("Pump.fun SELL execution failed:", error.message);
+            txHash = `FAILED: ${error.message}`;
+        }
+
+        await this.brain.store({
+            type: 'procedural',
+            content: `Attempted to sell ${amount} of ${symbol} on Pump.fun. Status: ${txHash}. Reasoning: ${reasoning}`,
+            summary: `Pump.fun SELL ${symbol} (${txHash.startsWith('FAILED') ? 'FAIL' : 'SUCCESS'})`,
+            tags: ['trade_execution', 'sell', symbol, txHash, 'pumpfun'],
+            source: 'TradeAgent'
+        });
     }
 
     private async executeSell(mint: string, symbol: string, amount: number, reasoning: string) {
