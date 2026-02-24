@@ -78,20 +78,21 @@ ${JSON.stringify(signal)}
 Here are some relevant past trading memories:
 ${context}
 
-Based on this information, should you BUY or SKIP this token?
-If you decide to BUY, also decide the AMOUNT (in SOL) to spend based on your current balance and risk assessment.
+Based on this information, evaluate the trade and provide a Confidence Score (1-100).
+A score above 60 means you want to BUY. A score 60 or below means SKIP.
 
 Respond with a JSON object in this exact format:
 {
   "decision": "BUY" | "SKIP",
-  "reasoning": "A concise 1-sentence explanation of your decision based on the patterns",
-  "amountSol": number (required if decision is BUY, otherwise 0)
+  "confidenceScore": number (1-100),
+  "reasoning": "A concise 1-sentence explanation of your decision based on the patterns"
 }`;
 
         console.log("Consulting Claude 3 Haiku for decision...");
         let decision = "SKIP";
         let llmReasoning = "Default Fallback";
         let amountSol = 0;
+        let confidenceScore = 0;
 
         try {
             const response = await this.anthropic.messages.create({
@@ -106,14 +107,36 @@ Respond with a JSON object in this exact format:
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
                 decision = parsed.decision === 'BUY' ? 'BUY' : 'SKIP';
+                confidenceScore = parsed.confidenceScore || 0;
                 llmReasoning = parsed.reasoning || "No reasoning provided by LLM.";
-                amountSol = parsed.amountSol || 0;
 
-                // Safety check: Don't spend more than 50% of balance or 10 SOL whichever is smaller for now
-                const maxTrade = Math.min(balanceSol * 0.5, 10);
-                if (decision === 'BUY' && (amountSol <= 0 || amountSol > maxTrade)) {
-                    console.warn(`LLM suggested unsafe trade amount: ${amountSol} SOL. Scaling down to safety limit.`);
-                    amountSol = Math.max(0.01, Math.min(amountSol, maxTrade));
+                if (decision === 'BUY' && confidenceScore > 60) {
+                    // --- Adaptive Mathematical Risk Sizing ---
+                    // Max risk per trade: 25% of portfolio (for 100 confidence)
+                    // Min risk per trade: 5% of portfolio (for 61 confidence)
+                    const maxRiskPct = 0.25;
+                    const minRiskPct = 0.05;
+
+                    // Scale from 0 to 1 based on how far above 60 the score is (max is 100-60 = 40)
+                    const confidenceScale = Math.min(1, Math.max(0, (confidenceScore - 60) / 40));
+                    const riskPct = minRiskPct + (maxRiskPct - minRiskPct) * confidenceScale;
+
+                    amountSol = balanceSol * riskPct;
+
+                    // Safety boundaries Check: Leave room for slippage/fees (buffer: 0.05 SOL)
+                    const maxTradeAbsolute = 10; // Hard max of 10 SOL
+                    const availableToSpend = Math.max(0, balanceSol - 0.05);
+                    amountSol = Math.min(amountSol, maxTradeAbsolute, availableToSpend);
+
+                    if (amountSol < 0.01) {
+                        decision = 'SKIP';
+                        llmReasoning += ` | Scaled amount (${amountSol.toFixed(4)}) was too small. Skipping.`;
+                    } else {
+                        llmReasoning += ` | Algorithm scaled trade to ${amountSol.toFixed(3)} SOL based on ${confidenceScore}/100 confidence.`;
+                    }
+                } else {
+                    decision = 'SKIP';
+                    amountSol = 0;
                 }
             } else {
                 llmReasoning = "Failed to parse JSON from LLM: " + responseText;
@@ -123,13 +146,13 @@ Respond with a JSON object in this exact format:
             llmReasoning = `Error querying Anthropic API: ${err.message}`;
         }
 
-        console.log(`Decision: ${decision}\nReason: ${llmReasoning}`);
+        console.log(`Decision: ${decision} (Confidence: ${confidenceScore})\nReason: ${llmReasoning}`);
 
         // 2. Store the reasoning and decision
         await this.brain.store({
             type: 'procedural',
-            content: `Signal received for ${signal.symbol} (${signal.tokenAddress}). Decision: ${decision}. Reasoning: ${llmReasoning}. Initial signal data: ${JSON.stringify(signal)}`,
-            summary: `Trade decision for ${signal.symbol}`,
+            content: `Signal received for ${signal.symbol} (${signal.tokenAddress}). Decision: ${decision}. Confidence: ${confidenceScore}. Reasoning: ${llmReasoning}. Initial signal data: ${JSON.stringify(signal)}`,
+            summary: `Trade decision for ${signal.symbol} (${confidenceScore}/100)`,
             tags: ['trade_decision', signal.symbol, decision],
             source: 'TradeAgent'
         });
