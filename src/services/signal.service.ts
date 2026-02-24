@@ -42,18 +42,28 @@ export class SignalService {
 
             if (data.pairs && data.pairs.length > 0) {
                 // Filter for solana only, avoid stablecoins
-                const commonTokens = [
+                const commonTokenAddresses = [
                     'So11111111111111111111111111111111111111112', // WSOL
                     'EPjFW31p326ce4fk2wgVqsG49Gst3dewdG977hcadHL8', // USDC
                     'Es9vMFrzaDCSTyGv98JT2LBqzJ9stZ9dnVryHLp3p25'  // USDT
                 ];
 
-                const validPairs = data.pairs.filter((p: any) =>
-                    p.chainId === 'solana' &&
-                    !commonTokens.includes(p.baseToken.address) &&
-                    // "De-gen Discovery": even lower floor for pump.fun specific queries
-                    parseFloat(p.liquidity?.usd || "0") > (randomQuery === 'pump.fun' ? 500 : 2000)
-                );
+                // Scammers create fake tokens named after major caps to trap search queries.
+                // We blacklist these symbols to ensure the agent only buys original/new tokens.
+                const imposterSymbols = [
+                    'SOL', 'USDC', 'USDT', 'BTC', 'ETH', 'WIF', 'BONK', 'PEPE', 'DOGE', 'SHIB', 'PNUT', 'JUP', 'RAY'
+                ];
+
+                const validPairs = data.pairs.filter((p: any) => {
+                    const symbol = p.baseToken?.symbol?.toUpperCase() || "";
+                    const isImposter = imposterSymbols.includes(symbol);
+
+                    return p.chainId === 'solana' &&
+                        !commonTokenAddresses.includes(p.baseToken.address) &&
+                        !isImposter &&
+                        // "De-gen Discovery": even lower floor for pump.fun specific queries
+                        parseFloat(p.liquidity?.usd || "0") > (randomQuery === 'pump.fun' ? 500 : 2000);
+                });
 
                 if (validPairs.length > 0) {
                     // Prioritize tokens with high activity (txns) even if liquidity is low
