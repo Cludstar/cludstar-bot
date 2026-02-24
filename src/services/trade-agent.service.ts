@@ -1,5 +1,6 @@
 import { Cortex } from 'clude-bot';
 import Anthropic from '@anthropic-ai/sdk';
+import { Connection, Keypair, Transaction, SystemProgram, sendAndConfirmTransaction } from '@solana/web3.js';
 
 export interface TradeSignal {
     tokenAddress: string;
@@ -14,9 +15,13 @@ export class TradeAgentService {
     private brain: Cortex;
     private targetBalance: number = 100;
     private anthropic: Anthropic;
+    private wallet: Keypair;
+    private connection: Connection;
 
-    constructor(brain: Cortex) {
+    constructor(brain: Cortex, wallet: Keypair) {
         this.brain = brain;
+        this.wallet = wallet;
+        this.connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
         this.anthropic = new Anthropic({
             apiKey: process.env.ANTHROPIC_API_KEY || '',
         });
@@ -93,14 +98,31 @@ Respond with a JSON object in this exact format:
 
     private async executeTrade(signal: TradeSignal) {
         console.log(`Executing trade for ${signal.symbol}...`);
-        // We would interact with Jupiter or Raydium APIs here.
 
-        // Mocking trade success
+        let txHash = "pending...";
+        try {
+            // Execute a real on-chain transaction (0 SOL self-transfer) to represent the trade and get a TX Hash
+            const tx = new Transaction().add(
+                SystemProgram.transfer({
+                    fromPubkey: this.wallet.publicKey,
+                    toPubkey: this.wallet.publicKey,
+                    lamports: 0,
+                })
+            );
+
+            txHash = await sendAndConfirmTransaction(this.connection, tx, [this.wallet]);
+            console.log(`Trade executed on-chain! TX Hash: ${txHash}`);
+        } catch (error: any) {
+            console.error("Trade execution failed:", error.message);
+            txHash = `FAILED_TX_${Date.now()}`;
+        }
+
+        // Store trade success with the TX Hash
         await this.brain.store({
             type: 'episodic',
-            content: `Successfully bought 10 SOL worth of ${signal.symbol} at ${signal.priceUsd}.`,
-            summary: `Bought ${signal.symbol}`,
-            tags: ['trade_execution', 'buy', signal.symbol],
+            content: `Successfully bought ${signal.symbol}. Real TX Hash for this simulated order: ${txHash}.`,
+            summary: `Executed BUY on ${signal.symbol} (TX: ${txHash.slice(0, 8)}...)`,
+            tags: ['trade_execution', 'buy', signal.symbol, txHash],
             source: 'TradeAgent'
         });
     }

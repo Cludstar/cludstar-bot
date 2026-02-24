@@ -42,7 +42,7 @@ async function main() {
         console.log("Cortex initialized successfully!");
 
         // 2. Initialize Agent
-        const agent = new TradeAgentService(brain);
+        const agent = new TradeAgentService(brain, walletService.getKeypair());
 
         // 3. Initialize Signal Monitor
         const monitor = new SignalService(agent);
