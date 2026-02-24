@@ -62,6 +62,18 @@ async function main() {
             agent.scanAndEvaluatePositions();
         }, 5 * 60000); // Every 5 minutes
 
+        // --- NEW: High-Frequency Dream Cycle ---
+        // Every 20 minutes, the agent reviews its recent memories,
+        // connects initial BUY signals with any SELL outcomes (profit/loss),
+        // and generates new generalized "trading rules" for its long-term memory.
+        setInterval(() => {
+            console.log("\n[COGNITIVE EVENT] Initiating high-frequency Dream Cycle (20 min interval)...");
+            agent.runDreamCycle();
+        }, 20 * 60 * 1000);
+
+        // Initial dream cycle on boot
+        agent.runDreamCycle();
+
         // 6. Start the Web UI API Server
         startServer(brain, walletService.getPublicKey());
 
