@@ -10,21 +10,99 @@ export class SignalService {
     async startMonitoring() {
         console.log("Starting high-frequency signal monitor (3-7s intervals)...");
 
-        const searchLoop = async () => {
+        const trendingLoop = async () => {
+            await this.fetchPumpTrending();
+            setTimeout(trendingLoop, 10000); // Top Runners every 10s
+        };
+
+        const newestLoop = async () => {
+            await this.fetchPumpNewest();
+            setTimeout(newestLoop, 5000); // Newest creations every 5s
+        };
+
+        const migratedLoop = async () => {
+            await this.fetchPumpMigrated();
+            setTimeout(migratedLoop, 20000); // Recently migrated every 20s
+        };
+
+        const dexSearchLoop = async () => {
             await this.fetchLatestSignals();
-            // Faster polling: 2-5 seconds
-            const nextInterval = Math.floor(Math.random() * (5000 - 2000 + 1)) + 2000;
-            setTimeout(searchLoop, nextInterval);
+            // Fallback/Variety from DexScreener every 30s
+            setTimeout(dexSearchLoop, 30000);
         };
 
-        const newListingsLoop = async () => {
-            await this.fetchNewListings();
-            // Brand new listings are high-alpha, check every 8 seconds
-            setTimeout(newListingsLoop, 8000);
-        };
+        trendingLoop();
+        newestLoop();
+        migratedLoop();
+        dexSearchLoop();
+    }
 
-        searchLoop();
-        newListingsLoop();
+    private async processPumpCoins(coins: any[], reasoningPrefix: string) {
+        if (!Array.isArray(coins) || coins.length === 0) return;
+
+        // Process up to 5 tokens per batch to handle the high density
+        const toProcess = coins.filter(c => c.mint && !this.recentTokens.has(c.mint)).slice(0, 5);
+
+        for (const coin of toProcess) {
+            this.recentTokens.add(coin.mint);
+
+            // For Pump.fun tokens, we can construct the signal directly from the batch data
+            // which often includes market cap and basic info
+            const signal: TradeSignal = {
+                tokenAddress: coin.mint,
+                symbol: coin.symbol,
+                reasoning: `${reasoningPrefix}. MC: $${Math.round(coin.usd_market_cap || 0)}. Bonding: ${Math.round(coin.bonding_curve_progress || 0)}%.`,
+                priceUsd: coin.price_usd || 0,
+                isPumpFun: true
+            };
+
+            await this.agent.evaluateSignal(signal);
+        }
+
+        // Cache management
+        if (this.recentTokens.size > 2000) {
+            const items = Array.from(this.recentTokens);
+            this.recentTokens = new Set(items.slice(1000));
+        }
+    }
+
+    private async fetchPumpTrending() {
+        try {
+            console.log("Fetching Pump.fun Top Runners...");
+            const response = await fetch('https://frontend-api-v3.pump.fun/coins/top-runners');
+            const data: any = await response.json();
+            await this.processPumpCoins(data, "🔥 PUMP TRENDING (Top Runners)");
+        } catch (error) {
+            console.error("fetchPumpTrending failed:", error);
+        }
+    }
+
+    private async fetchPumpNewest() {
+        try {
+            console.log("Fetching Pump.fun Newest Listings...");
+            const url = 'https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=created_timestamp&includeNsfw=false&order=DESC';
+            const response = await fetch(url);
+            const data: any = await response.json();
+            await this.processPumpCoins(data, "✨ PUMP NEWEST (Bonding Curve)");
+        } catch (error) {
+            console.error("fetchPumpNewest failed:", error);
+        }
+    }
+
+    private async fetchPumpMigrated() {
+        try {
+            console.log("Fetching Pump.fun Recently Migrated...");
+            // Market cap sort usually shows the biggest/completed ones
+            const url = 'https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=market_cap&includeNsfw=false&order=DESC';
+            const response = await fetch(url);
+            const data: any = await response.json();
+
+            // Filter for only completed tokens in this batch
+            const migrated = Array.isArray(data) ? data.filter((c: any) => c.complete === true) : [];
+            await this.processPumpCoins(migrated, "🚀 PUMP MIGRATED (Raydium/PumpSwap)");
+        } catch (error) {
+            console.error("fetchPumpMigrated failed:", error);
+        }
     }
 
     private async fetchNewListings() {
