@@ -12,15 +12,15 @@ export class SignalService {
 
         const searchLoop = async () => {
             await this.fetchLatestSignals();
-            // Random interval between 3-7 seconds to avoid rate limits and simulate real-time
-            const nextInterval = Math.floor(Math.random() * (7000 - 3000 + 1)) + 3000;
+            // Faster polling: 2-5 seconds
+            const nextInterval = Math.floor(Math.random() * (5000 - 2000 + 1)) + 2000;
             setTimeout(searchLoop, nextInterval);
         };
 
         const newListingsLoop = async () => {
             await this.fetchNewListings();
-            // Check for brand new migrated/listed pairs every 15 seconds
-            setTimeout(newListingsLoop, 15000);
+            // Brand new listings are high-alpha, check every 8 seconds
+            setTimeout(newListingsLoop, 8000);
         };
 
         searchLoop();
@@ -42,29 +42,34 @@ export class SignalService {
                 );
 
                 if (newSolanaTokens.length > 0) {
-                    // Pick the very newest one
-                    const newestToken = newSolanaTokens[0];
-                    this.recentTokens.add(newestToken.tokenAddress);
+                    // Process up to the 3 newest tokens found in this poll
+                    const toProcess = newSolanaTokens.slice(0, 3);
 
-                    // To evaluate it, we need to fetch its actual pair data (price/liquidity)
-                    // since the profile API only returns metadata (links, desc).
-                    const pairResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${newestToken.tokenAddress}`);
-                    const pairData: any = await pairResponse.json();
+                    for (const newestToken of toProcess) {
+                        this.recentTokens.add(newestToken.tokenAddress);
 
-                    if (pairData.pairs && pairData.pairs.length > 0) {
-                        const targetPair = pairData.pairs[0];
-                        const isPumpFun = targetPair.dexId === 'pump-fun' || targetPair.dexId === 'pumpfun';
+                        // Fetch actual pair data
+                        const pairResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${newestToken.tokenAddress}`);
+                        const pairData: any = await pairResponse.json();
 
-                        const signal: TradeSignal = {
-                            tokenAddress: targetPair.baseToken.address,
-                            symbol: targetPair.baseToken.symbol,
-                            reasoning: `💥 ULTRA-EARLY ALERT: Newly listed/migrated token. Liq: $${targetPair.liquidity?.usd || 0}.`,
-                            volume24h: targetPair.volume?.h24,
-                            priceUsd: parseFloat(targetPair.priceUsd),
-                            isPumpFun: isPumpFun
-                        };
+                        if (pairData.pairs && pairData.pairs.length > 0) {
+                            const targetPair = pairData.pairs.sort((a: any, b: any) =>
+                                parseFloat(b.liquidity?.usd || "0") - parseFloat(a.liquidity?.usd || "0")
+                            )[0]; // Pick deepest liq pair for this token
 
-                        await this.agent.evaluateSignal(signal);
+                            const isPumpFun = targetPair.dexId === 'pump-fun' || targetPair.dexId === 'pumpfun';
+
+                            const signal: TradeSignal = {
+                                tokenAddress: targetPair.baseToken.address,
+                                symbol: targetPair.baseToken.symbol,
+                                reasoning: `💥 ULTRA-EARLY ALERT: Newly listed/migrated token. Liq: $${targetPair.liquidity?.usd || 0}.`,
+                                volume24h: targetPair.volume?.h24,
+                                priceUsd: parseFloat(targetPair.priceUsd),
+                                isPumpFun: isPumpFun
+                            };
+
+                            await this.agent.evaluateSignal(signal);
+                        }
                     }
                 }
             }
@@ -120,30 +125,33 @@ export class SignalService {
                 });
 
                 if (validPairs.length > 0) {
-                    // Pick completely at random from all valid, unseen pairs to maximize variety
-                    const targetPair = validPairs[Math.floor(Math.random() * validPairs.length)];
+                    // Pick up to 3 random valid, unseen pairs to maximize variety per poll
+                    const shuffled = validPairs.sort(() => 0.5 - Math.random());
+                    const targets = shuffled.slice(0, 3);
 
-                    // Add to our rolling cache so we don't look at it again soon
-                    this.recentTokens.add(targetPair.baseToken.address);
+                    for (const targetPair of targets) {
+                        // Add to our rolling cache
+                        this.recentTokens.add(targetPair.baseToken.address);
 
-                    // Simple memory management for the cache
-                    if (this.recentTokens.size > 500) {
-                        const items = Array.from(this.recentTokens);
-                        this.recentTokens = new Set(items.slice(250));
+                        const isPumpFun = targetPair.dexId === 'pump-fun' || targetPair.dexId === 'pumpfun';
+
+                        const signal: TradeSignal = {
+                            tokenAddress: targetPair.baseToken.address,
+                            symbol: targetPair.baseToken.symbol,
+                            reasoning: `De-gen discovery on ${targetPair.dexId}. Liq: $${targetPair.liquidity?.usd || 0}. 5m Buys: ${targetPair.txns?.m5?.buys || 0}`,
+                            volume24h: targetPair.volume?.h24,
+                            priceUsd: parseFloat(targetPair.priceUsd),
+                            isPumpFun: isPumpFun
+                        };
+
+                        await this.agent.evaluateSignal(signal);
                     }
 
-                    const isPumpFun = targetPair.dexId === 'pump-fun' || targetPair.dexId === 'pumpfun';
-
-                    const signal: TradeSignal = {
-                        tokenAddress: targetPair.baseToken.address,
-                        symbol: targetPair.baseToken.symbol,
-                        reasoning: `De-gen discovery on ${targetPair.dexId}. Liq: $${targetPair.liquidity?.usd || 0}. 5m Buys: ${targetPair.txns?.m5?.buys || 0}`,
-                        volume24h: targetPair.volume?.h24,
-                        priceUsd: parseFloat(targetPair.priceUsd),
-                        isPumpFun: isPumpFun
-                    };
-
-                    await this.agent.evaluateSignal(signal);
+                    // Simple memory management for the cache
+                    if (this.recentTokens.size > 1000) {
+                        const items = Array.from(this.recentTokens);
+                        this.recentTokens = new Set(items.slice(500));
+                    }
                 }
             }
         } catch (error) {
