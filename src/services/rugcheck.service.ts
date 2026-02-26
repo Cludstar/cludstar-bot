@@ -19,10 +19,10 @@ export class RugCheckService {
             const response = await fetch(`https://api.rugcheck.xyz/v1/tokens/${mintAddress}/report/summary`);
 
             if (!response.ok) {
-                // If API is down or token not found, we err on the side of caution or allow it based on risk tolerance.
-                // For a de-gen bot, if rugcheck doesn't know it yet, it might just be VERY new.
-                console.warn(`[RugCheck] API unavailable or token not indexed yet (${response.status}). Proceeding with caution.`);
-                return { isSafe: true, risks: ["unindexed_token"], score: 0 };
+                // LEVEL 4 VETO: Anti-Instant Rug
+                // If the token is so new it's not indexed, we block it to be safe.
+                console.warn(`[RugCheck] Token not indexed yet (${response.status}). VETOING for safety.`);
+                return { isSafe: false, risks: ["unindexed_token_risk"], score: 0 };
             }
 
             const data: any = await response.json();
@@ -50,8 +50,11 @@ export class RugCheckService {
                         isSafe = false;
                     }
                     if (risk.name === "Mutable Metadata") {
-                        // Moderately dangerous, but very common on new memes. We note it but don't strictly block.
                         risks.push("Mutable Metadata");
+                        // LEVEL 4 VETO: Mutable metadata on a token with an existing score is a hard no.
+                        if (data.score > 400) {
+                            isSafe = false;
+                        }
                     }
                 }
             }

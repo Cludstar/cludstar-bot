@@ -12,6 +12,7 @@ export interface TradeSignal {
     priceUsd?: number;
     sentimentScore?: number;
     isPumpFun?: boolean;
+    creatorAddress?: string;
 }
 
 export class TradeAgentService {
@@ -47,7 +48,20 @@ export class TradeAgentService {
                 tags: ['trade_decision', signal.symbol, 'SKIP', 'rug_veto'],
                 source: 'TradeAgent'
             });
-            return; // Exit early, save LLM tokens and avoid honeypots
+            return; // Exit early
+        }
+
+        // 0.5. VETO LAYER: Creator Blacklisting (Memory-based)
+        if (signal.creatorAddress) {
+            const blacklistMemories = await this.brain.recall({
+                query: `blacklisted creator rugger serial rug pull ${signal.creatorAddress}`,
+                limit: 1
+            });
+
+            if (blacklistMemories.length > 0 && blacklistMemories[0].content.includes(signal.creatorAddress)) {
+                console.log(`[VETO] Blocked trade for ${signal.symbol}. Creator ${signal.creatorAddress} is a known rugger.`);
+                return; // Instant rejection for known ruggers
+            }
         }
 
         signal.reasoning += ` | RugCheck Pass. Risks: ${rugCheckResult.risks.length > 0 ? rugCheckResult.risks.join(', ') : 'None'}.`;
@@ -512,7 +526,29 @@ Respond with a JSON object in this exact format:
             // Check if it's a "No routes found" error (Common when Liquidity is removed / Rug Pull)
             if (e.message.toLowerCase().includes('route')) {
                 txHash = `FAILED_NO_LIQUIDITY`;
-                // Create a very distinct memory for the Dream cycle to pick up
+
+                // LEVEL 4: Auto-Blacklist Creator
+                try {
+                    console.log(`[Rug Pull] Attempting to identify and blacklist creator for ${mint}...`);
+                    const response = await fetch(`https://frontend-api-v3.pump.fun/coins/${mint}`);
+                    const data: any = await response.json();
+                    const creator = data.creator;
+
+                    if (creator) {
+                        await this.brain.store({
+                            type: 'procedural',
+                            content: `BLACKBOARD: Creator ${creator} of ${symbol} (${mint}) is a confirmed rugger. Blacklisted for all future signals.`,
+                            summary: `BLACKBOARD: Rugger Blacklisted (${creator})`,
+                            tags: ['blacklist', 'rug_pull', symbol, mint, 'BLACKBOARD', creator],
+                            source: 'TradeAgent'
+                        });
+                        console.log(`[VETO] Successfully blacklisted creator ${creator} for ${symbol}.`);
+                    }
+                } catch (e: any) {
+                    console.warn(`[Rug Pull] Could not fetch creator for ${mint} to blacklist: ${e.message}`);
+                }
+
+                // Store a specific episodic memory for Rug Pull detection
                 await this.brain.store({
                     type: 'episodic',
                     content: `Severe Failure: Attempted to sell ${symbol} (${mint}) but received 'No routes found'. This typically means liquidity was completely removed (Rug Pull).`,

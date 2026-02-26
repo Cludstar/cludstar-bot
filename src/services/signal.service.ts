@@ -25,6 +25,11 @@ export class SignalService {
             setTimeout(migratedLoop, 20000); // Recently migrated every 20s
         };
 
+        const almostBondedLoop = async () => {
+            await this.fetchPumpAlmostBonded();
+            setTimeout(almostBondedLoop, 15000); // Almost bonded every 15s
+        };
+
         const dexSearchLoop = async () => {
             await this.fetchLatestSignals();
             // Fallback/Variety from DexScreener every 30s
@@ -34,6 +39,7 @@ export class SignalService {
         trendingLoop();
         newestLoop();
         migratedLoop();
+        almostBondedLoop();
         dexSearchLoop();
     }
 
@@ -43,7 +49,10 @@ export class SignalService {
         // Process up to 5 tokens per batch to handle the high density
         const toProcess = coins.filter(c => c.mint && !this.recentTokens.has(c.mint)).slice(0, 5);
 
-        for (const coin of toProcess) {
+        for (const item of toProcess) {
+            // Handle both structure: { coin: {...} } (Top Runners) and {...} (Normal Lists)
+            const coin = item.coin ? item.coin : item;
+
             this.recentTokens.add(coin.mint);
 
             // For Pump.fun tokens, we can construct the signal directly from the batch data
@@ -53,7 +62,8 @@ export class SignalService {
                 symbol: coin.symbol,
                 reasoning: `${reasoningPrefix}. MC: $${Math.round(coin.usd_market_cap || 0)}. Bonding: ${Math.round(coin.bonding_curve_progress || 0)}%.`,
                 priceUsd: coin.price_usd || 0,
-                isPumpFun: true
+                isPumpFun: true,
+                creatorAddress: coin.creator
             };
 
             await this.agent.evaluateSignal(signal);
@@ -102,6 +112,21 @@ export class SignalService {
             await this.processPumpCoins(migrated, "🚀 PUMP MIGRATED (Raydium/PumpSwap)");
         } catch (error) {
             console.error("fetchPumpMigrated failed:", error);
+        }
+    }
+
+    private async fetchPumpAlmostBonded() {
+        try {
+            console.log("Fetching Pump.fun Almost Bonded...");
+            // High market cap but NOT complete = Almost Bonded
+            const url = 'https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=market_cap&includeNsfw=false&order=DESC';
+            const response = await fetch(url);
+            const data: any = await response.json();
+
+            const almostBonded = Array.isArray(data) ? data.filter((c: any) => c.complete === false) : [];
+            await this.processPumpCoins(almostBonded, "💎 PUMP ALMOST BONDED (90%+)");
+        } catch (error) {
+            console.error("fetchPumpAlmostBonded failed:", error);
         }
     }
 
