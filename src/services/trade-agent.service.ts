@@ -114,33 +114,34 @@ Respond with a JSON object in this exact format:
             const result = await model.generateContent(prompt);
             const responseText = result.response.text();
 
-            // Extract JSON from Claude's response
-            const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
+            // Extract JSON from Gemini's response (strip markdown code fences if present)
+            let cleanedResponse = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+            const jsonMatch = cleanedResponse.match(/\{[\s\S]*?\}/);
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
                 decision = parsed.decision === 'BUY' ? 'BUY' : 'SKIP';
                 confidenceScore = parsed.confidenceScore || 0;
                 llmReasoning = parsed.reasoning || "No reasoning provided by LLM.";
 
-                if (decision === 'BUY' && confidenceScore > 60) {
-                    // --- Adaptive Mathematical Risk Sizing ---
-                    // Max risk per trade: 25% of portfolio (for 100 confidence)
-                    // Min risk per trade: 5% of portfolio (for 61 confidence)
-                    const maxRiskPct = 0.25;
-                    const minRiskPct = 0.05;
+                if (decision === 'BUY' && confidenceScore > 40) {
+                    // --- Aggressive Scalper Risk Sizing ---
+                    // Max risk per trade: 30% of portfolio (for 100 confidence)
+                    // Min risk per trade: 10% of portfolio (for 41 confidence)
+                    const maxRiskPct = 0.30;
+                    const minRiskPct = 0.10;
 
-                    // Scale from 0 to 1 based on how far above 60 the score is (max is 100-60 = 40)
-                    const confidenceScale = Math.min(1, Math.max(0, (confidenceScore - 60) / 40));
+                    // Scale from 0 to 1 based on how far above 40 the score is (max is 100-40 = 60)
+                    const confidenceScale = Math.min(1, Math.max(0, (confidenceScore - 40) / 60));
                     const riskPct = minRiskPct + (maxRiskPct - minRiskPct) * confidenceScale;
 
                     amountSol = balanceSol * riskPct;
 
-                    // Safety boundaries Check: Leave room for slippage/fees (buffer: 0.05 SOL)
+                    // Safety boundaries Check: Leave room for slippage/fees (buffer: 0.005 SOL)
                     const maxTradeAbsolute = 10; // Hard max of 10 SOL
-                    const availableToSpend = Math.max(0, balanceSol - 0.05);
+                    const availableToSpend = Math.max(0, balanceSol - 0.005);
                     amountSol = Math.min(amountSol, maxTradeAbsolute, availableToSpend);
 
-                    if (amountSol < 0.01) {
+                    if (amountSol < 0.001) {
                         decision = 'SKIP';
                         llmReasoning += ` | Scaled amount (${amountSol.toFixed(4)}) was too small. Skipping.`;
                     } else {
@@ -445,7 +446,9 @@ Respond with a JSON object in this exact format:
             });
             const result = await model.generateContent(prompt);
             const responseText = result.response.text();
-            const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
+            // Strip markdown code fences from Gemini response
+            let cleanedResponse = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+            const jsonMatch = cleanedResponse.match(/\{[\s\S]*?\}/);
 
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);

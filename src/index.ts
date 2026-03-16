@@ -29,8 +29,8 @@ async function main() {
                 serviceKey: process.env.SUPABASE_SERVICE_KEY,
             },
             anthropic: {
-                apiKey: process.env.ANTHROPIC_API_KEY || 'dummy_key_if_not_required',
-                model: 'claude-sonnet-4-5-20250929'
+                apiKey: process.env.GEMINI_API_KEY || 'dummy_key_if_not_required',
+                model: 'gemini-2.5-flash'
             },
             solana: {
                 rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
@@ -51,7 +51,7 @@ async function main() {
         await monitor.startMonitoring();
 
         // 4. Start Clude Dream cycles (Self reflection/optimization)
-        if (process.env.ANTHROPIC_API_KEY) {
+        if (process.env.GEMINI_API_KEY) {
             brain.startDreamSchedule();
             console.log("Dream scheduler started.");
         }

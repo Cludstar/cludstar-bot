@@ -52,7 +52,7 @@ export class SignalService {
             .filter(c => c.mint && !this.recentTokens.has(c.mint))
             .filter(c => {
                 const mc = c.usd_market_cap || (c.coin ? c.coin.usd_market_cap : 0);
-                return mc > 5000;
+                return mc > 2000;
             })
             .slice(0, 5);
 
