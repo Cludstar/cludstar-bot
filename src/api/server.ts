@@ -20,8 +20,8 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
 
     app.get('/api/trades', async (req, res) => {
         try {
-            // Fetch recent episodic and procedural memories related to trades
-            const recentTrades = await brain.recent(24, ['episodic', 'procedural'], 200);
+            // Fetch recent episodic, procedural, and semantic memories
+            const recentTrades = await brain.recent(24, ['episodic', 'procedural', 'semantic'], 500);
             res.json(recentTrades);
         } catch (error: any) {
             res.status(500).json({ error: error.message });
