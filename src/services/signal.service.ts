@@ -36,10 +36,10 @@ export class SignalService {
             setTimeout(dexSearchLoop, 30000);
         };
 
-        trendingLoop();
+        // trendingLoop();
         newestLoop();
-        migratedLoop();
-        almostBondedLoop();
+        // migratedLoop();
+        // almostBondedLoop();
         dexSearchLoop();
     }
 
