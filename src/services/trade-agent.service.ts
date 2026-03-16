@@ -1,4 +1,4 @@
-import { Cortex } from 'clude-bot';
+import { Cortex } from '../engine';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Connection, Keypair, VersionedTransaction, PublicKey } from '@solana/web3.js';
 import fetch from 'node-fetch';

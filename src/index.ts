@@ -3,7 +3,7 @@ import { WalletService } from './services/wallet.service';
 import { TradeAgentService } from './services/trade-agent.service';
 import { SignalService } from './services/signal.service';
 import dotenv from 'dotenv';
-import { Cortex } from 'clude-bot';
+import { Cortex } from './engine';
 
 dotenv.config();
 
@@ -28,9 +28,9 @@ async function main() {
                 url: process.env.SUPABASE_URL,
                 serviceKey: process.env.SUPABASE_SERVICE_KEY,
             },
-            anthropic: {
-                apiKey: process.env.GEMINI_API_KEY || 'dummy_key_if_not_required',
-                model: 'gemini-2.5-flash'
+            gemini: {
+                apiKey: process.env.GEMINI_API_KEY || '',
+                model: 'gemini-2.0-flash'
             },
             solana: {
                 rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
