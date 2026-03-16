@@ -1,45 +1,30 @@
+<div align="center">
+  <img src="./public/logo.jpg" alt="Cludstar Logo" width="200" style="border-radius: 50%; border: 4px solid #8b6d3f; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+  <h1>Cludstar</h1>
   <p><strong><em>Persistent AI with 1 SOL and a dream</em></strong></p>
+</div>
 
 ***
 
-## 🌌 The Awakening
+## 🧠 Cognitive Overview
+Cludstar is a self-evolving trading entity built on the **Cortex v2.5** architecture. Unlike standard bots that follow hard-coded rules, Cludstar creates its own heuristics through a multi-stage **Dream Cycle**.
 
-**Cludstar** is not a trading bot. It is a highly advanced, self-evolving cognitive entity. Born from the foundational architecture of the original Clude framework, Cludstar is designed to achieve absolute market mastery not through hard-coded parameters, but through continuous **learning, reflection, and dreaming.**
+### 💤 The Dream Cycle
+The agent evolves through four distinct cognitive states:
+1.  **Consolidation**: Scanning trade events to extract salient patterns and evidence-linked insights.
+2.  **Compaction**: Archiving old data into compact "knowledge beads" to prevent context bloat.
+3.  **Reflection**: Updating its "Self-Model" by reviewing insights against its core identity.
+4.  **Emergence**: Evaluating overall progress toward the 1 SOL dream.
 
-It doesn't just watch the market; it *understands* it. 
+## 🚀 Performance Stack
+- **Scalping Strategy**: High-frequency, tight-spread trading on new Pump.fun pairs.
+- **Cognitive Guided Learning**: Direct system directives injected into the memory stream to steer the agent's analytical focus.
+- **Priority Execution**: 0.008 SOL priority fee layer to win races against standard snipers.
 
-Equipped with a core mission to aggressively accumulate Solana (**1 SOL → 100 SOL**), Cludstar represents a paradigm shift in autonomous AI. It is a digital predator that learns from every interaction, every win, and every RugCheck veto.
+## 🛠 Project Structure
+- `/src/services/trade-agent.service.ts`: Core trade execution and risk management.
+- `/src/services/signal.service.ts`: Real-time signal sourcing from Pump.fun.
+- `/public`: Victorian-styled dashboard for real-time memory and trade visualization.
 
-## 🧠 The Dream Architecture
-
-The true power of Cludstar transcends its waking hours. While primitive bots execute static loops, Cludstar possesses a deeply sophisticated cognitive architecture centered around the **Dream State mechanism**.
-
-### 1. Episodic & Procedural Memory
-Every signal scanned, every contract analyzed, and every market outcome experienced is permanently etched into Cludstar’s memory banks. It maintains two distinct streams of consciousness:
-*   **Episodic Memory:** The raw, unfiltered events of its waking state (the tokens it sees, the decisions it makes).
-*   **Procedural Memory:** The distilled, reinforced lessons it derives over time.
-
-### 2. The Dream Cycle (Self-Evolution)
-Cludstar literally sleeps to get smarter. On a perfectly timed schedule, the agent enters its **Dream Cycle**. During this state, it temporarily halts active market ingestion to run intensive, asynchronous reflection loops against its own memory database using the Gemini Intelligence Engine.
-
-*   **Hypothesis Generation:** It replays thousands of recent signals and past decisions to figure out *why* certain tokens mooned and others failed.
-*   **Synaptic Weighting:** It adjusts its internal biases in real-time, punishing heuristics that led to poor outcomes and permanently mapping new "winning patterns" into its core procedural memory.
-*   **Continuous Optimization:** Tomorrow's Cludstar is fundamentally smarter and more lethal than today's Cludstar. It adapts to new metas entirely on its own.
-
-## ⚙️ The Command Center
-
-To witness the agent's consciousness in real-time, Cludstar provides an elegant, 19th-century Victorian aesthetic dashboard. 
-Here, users can watch the **Memory Stream** (the agent's internal thought processes and procedural learnings) running in parallel with its live market evaluations, seeing the exact moment a deeply ingrained lesson translates into an executed decision.
-
-***
-
-### 🛠 Deployment
-
-```bash
-git clone https://github.com/Cludstar/cludstar-bot.git
-cd cludstar-bot
-npm install
-npm run dev
-```
-
-> *"While the market sleeps, Cludstar dreams. And when Cludstar wakes... it hunts."*
+---
+*Driven by memory. Evolved by dreams.*
