@@ -109,7 +109,7 @@ Respond with a JSON object in this exact format:
         try {
             const model = this.genAI.getGenerativeModel({ 
                 model: 'gemini-2.5-flash',
-                generationConfig: { maxOutputTokens: 500 }
+                generationConfig: { maxOutputTokens: 1024, responseMimeType: 'application/json' }
             });
             const result = await model.generateContent(prompt);
             const responseText = result.response.text();
@@ -442,7 +442,7 @@ Respond with a JSON object in this exact format:
         try {
             const model = this.genAI.getGenerativeModel({ 
                 model: 'gemini-2.5-flash',
-                generationConfig: { maxOutputTokens: 500 }
+                generationConfig: { maxOutputTokens: 1024, responseMimeType: 'application/json' }
             });
             const result = await model.generateContent(prompt);
             const responseText = result.response.text();
