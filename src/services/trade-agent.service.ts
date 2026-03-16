@@ -129,9 +129,9 @@ Respond with a JSON object in this exact format:
 
                 if (decision === 'BUY' && confidenceScore > 40) {
                     // --- Aggressive Scalper Risk Sizing ---
-                    // Max risk per trade: 15% of portfolio (capped at 0.15 SOL)
+                    // Max risk per trade: 10% of portfolio (capped at 0.1 SOL)
                     // Min risk per trade: 5% of portfolio
-                    const maxRiskPct = 0.15;
+                    const maxRiskPct = 0.1;
                     const minRiskPct = 0.05;
 
                     // Scale from 0 to 1 based on how far above 40 the score is (max is 100-40 = 60)
@@ -141,7 +141,7 @@ Respond with a JSON object in this exact format:
                     amountSol = balanceSol * riskPct;
 
                     // Safety boundaries Check: Leave room for slippage/fees (buffer: 0.005 SOL)
-                    const maxTradeAbsolute = 0.15; // Hard max of 0.15 SOL at 100% confidence
+                    const maxTradeAbsolute = 0.1; // Hard max of 0.1 SOL at 100% confidence
                     const availableToSpend = Math.max(0, balanceSol - 0.005);
                     amountSol = Math.min(amountSol, maxTradeAbsolute, availableToSpend);
 
