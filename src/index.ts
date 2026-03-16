@@ -60,7 +60,7 @@ async function main() {
         setInterval(() => {
             console.log("Triggering scheduled position scan...");
             agent.scanAndEvaluatePositions();
-        }, 5 * 60000); // Every 5 minutes
+        }, 30 * 1000); // Every 30 seconds
 
         // --- NEW: High-Frequency Dream Cycle ---
         // Every 20 minutes, the agent reviews its recent memories,

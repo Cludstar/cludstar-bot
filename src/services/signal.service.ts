@@ -230,8 +230,9 @@ export class SignalService {
                         !commonTokenAddresses.includes(p.baseToken.address) &&
                         !isImposter &&
                         !this.recentTokens.has(p.baseToken.address) && // Prevent analyzing the same token constantly
-                        // "De-gen Discovery": even lower floor for pump.fun specific queries
-                        parseFloat(p.liquidity?.usd || "0") > (randomQuery === 'pump.fun' ? 500 : 2000);
+                        // SCALPING: Strict liquidity and volume floors
+                        parseFloat(p.liquidity?.usd || "0") > 15000 &&
+                        parseFloat(p.volume?.h24 || "0") > 50000;
                 });
 
                 if (validPairs.length > 0) {

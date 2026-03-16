@@ -382,22 +382,37 @@ Respond with a JSON object in this exact format:
         const symbol = pair ? pair.baseToken.symbol : mint.slice(0, 4);
         const isPumpFun = pair?.dexId === 'pump-fun' || pair?.dexId === 'pumpfun';
 
-        // 3. Extract entry price and apply hard STOP-LOSS rule
+        // 3. Extract entry price and apply hard STOP-LOSS / TAKE-PROFIT rules
         let entryPrice = 0;
         const priceMatch = entryContext.match(/"priceUsd"\s*:\s*([\d.]+)/);
         if (priceMatch && priceMatch[1]) {
             entryPrice = parseFloat(priceMatch[1]);
         }
 
-        if (entryPrice > 0 && currentPrice < (entryPrice * 0.3)) {
-            console.log(`[STOP LOSS] ${symbol} price ($${currentPrice}) is < 30% of entry ($${entryPrice}). Taking hard stop.`);
-            const sellAmount = balance; // sell all
-            if (isPumpFun) {
-                await this.executePumpFunSell(mint, symbol, sellAmount, "Hard Stop Loss Triggered (Down 70%+)");
-            } else {
-                await this.executeSell(mint, symbol, sellAmount, "Hard Stop Loss Triggered (Down 70%+)");
+        if (entryPrice > 0) {
+            // SCALPING: -10% Hard Stop Loss
+            if (currentPrice < (entryPrice * 0.90)) {
+                console.log(`[STOP LOSS] ${symbol} price ($${currentPrice}) is < -10% of entry ($${entryPrice}). Taking hard stop.`);
+                const sellAmount = balance; // sell all
+                if (isPumpFun) {
+                    await this.executePumpFunSell(mint, symbol, sellAmount, "Scalp Stop Loss Triggered (-10%)");
+                } else {
+                    await this.executeSell(mint, symbol, sellAmount, "Scalp Stop Loss Triggered (-10%)");
+                }
+                return; // Skip LLM evaluation
             }
-            return; // Skip LLM evaluation
+
+            // SCALPING: +15% Hard Take Profit
+            if (currentPrice > (entryPrice * 1.15)) {
+                console.log(`[TAKE PROFIT] ${symbol} price ($${currentPrice}) is > +15% of entry ($${entryPrice}). Securing profit.`);
+                const sellAmount = balance; // sell all
+                if (isPumpFun) {
+                    await this.executePumpFunSell(mint, symbol, sellAmount, "Scalp Take Profit Triggered (+15%)");
+                } else {
+                    await this.executeSell(mint, symbol, sellAmount, "Scalp Take Profit Triggered (+15%)");
+                }
+                return; // Skip LLM evaluation
+            }
         }
 
         const prompt = `You are an autonomous Solana trading agent.
