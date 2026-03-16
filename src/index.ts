@@ -30,7 +30,7 @@ async function main() {
             },
             gemini: {
                 apiKey: process.env.GEMINI_API_KEY || '',
-                model: 'gemini-2.0-flash'
+                model: 'gemini-2.0-flash-001'
             },
             solana: {
                 rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
