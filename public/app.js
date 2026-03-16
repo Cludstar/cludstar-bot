@@ -28,7 +28,7 @@ function renderMemories(memories, containerId, emptyMessage) {
 
     memories.forEach(mem => {
         const el = document.createElement('div');
-        el.className = `log-entry type-${mem.type}`;
+        el.className = `log-entry type-${mem.memory_type || mem.type || 'system'}`;
 
         const time = new Date(mem.created_at).toLocaleTimeString();
 
@@ -43,7 +43,7 @@ function renderMemories(memories, containerId, emptyMessage) {
         el.innerHTML = `
             <div class="log-header">
                 <span class="log-time">[${time}]</span>
-                <span class="log-badge ${mem.type || 'default'}">${(mem.type || 'SYSTEM').toUpperCase()}</span>
+                <span class="log-badge ${mem.memory_type || mem.type || 'default'}">${(mem.memory_type || mem.type || 'SYSTEM').toUpperCase()}</span>
             </div>
             <div class="log-summary">${decisionTag}<span class="log-summary-text">${summaryText}</span></div>
             <div class="log-content">${mem.content}</div>
