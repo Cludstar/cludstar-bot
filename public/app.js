@@ -10,7 +10,7 @@ async function fetchMissionStatus() {
         text.innerText = `Current: ${data.currentBalance} SOL`;
         
         if (data.walletAddress) {
-            document.getElementById('wallet-text').innerText = data.walletAddress;
+            document.getElementById('wallet-text').innerText = `Wallet: ${data.walletAddress}`;
         }
     } catch (e) {
         console.error("Failed to fetch mission status", e);
