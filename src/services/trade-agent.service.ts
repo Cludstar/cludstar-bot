@@ -1,5 +1,5 @@
 import { Cortex } from 'clude-bot';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Connection, Keypair, VersionedTransaction, PublicKey } from '@solana/web3.js';
 import fetch from 'node-fetch';
 import { RugCheckService } from './rugcheck.service';
@@ -18,7 +18,7 @@ export interface TradeSignal {
 export class TradeAgentService {
     private brain: Cortex;
     private targetBalance: number = 100;
-    private anthropic: Anthropic;
+    private genAI: GoogleGenerativeAI;
     private wallet: Keypair;
     private connection: Connection;
     private rugCheck: RugCheckService;
@@ -27,9 +27,7 @@ export class TradeAgentService {
         this.brain = brain;
         this.wallet = wallet;
         this.connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
-        this.anthropic = new Anthropic({
-            apiKey: process.env.ANTHROPIC_API_KEY || '',
-        });
+        this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
         this.rugCheck = new RugCheckService();
     }
 
@@ -102,19 +100,19 @@ Respond with a JSON object in this exact format:
   "reasoning": "A concise 1-sentence explanation of your decision based on the patterns"
 }`;
 
-        console.log("Consulting Claude 3 Haiku for decision...");
+        console.log("Consulting Gemini for decision...");
         let decision = "SKIP";
         let llmReasoning = "Default Fallback";
         let amountSol = 0;
         let confidenceScore = 0;
 
         try {
-            const response = await this.anthropic.messages.create({
-                model: 'claude-3-haiku-20240307',
-                max_tokens: 200,
-                messages: [{ role: 'user', content: prompt }]
+            const model = this.genAI.getGenerativeModel({ 
+                model: 'gemini-2.5-flash',
+                generationConfig: { maxOutputTokens: 200 }
             });
-            const responseText = (response.content[0] as any).text;
+            const result = await model.generateContent(prompt);
+            const responseText = result.response.text();
 
             // Extract JSON from Claude's response
             const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
@@ -157,7 +155,7 @@ Respond with a JSON object in this exact format:
             }
         } catch (err: any) {
             console.error("LLM Generation Error:", err.message);
-            llmReasoning = `Error querying Anthropic API: ${err.message}`;
+            llmReasoning = `Error querying Gemini API: ${err.message}`;
         }
 
         console.log(`Decision: ${decision} (Confidence: ${confidenceScore})\nReason: ${llmReasoning}`);
@@ -325,7 +323,7 @@ Respond with a JSON object in this exact format:
                 }
             });
         } catch (e: any) {
-            console.error('Dream cycle skipped or failed (Anthropic config may be missing):', e.message);
+            console.error('Dream cycle skipped or failed (Gemini config may be missing):', e.message);
         }
     }
 
@@ -384,6 +382,24 @@ Respond with a JSON object in this exact format:
         const symbol = pair ? pair.baseToken.symbol : mint.slice(0, 4);
         const isPumpFun = pair?.dexId === 'pump-fun' || pair?.dexId === 'pumpfun';
 
+        // 3. Extract entry price and apply hard STOP-LOSS rule
+        let entryPrice = 0;
+        const priceMatch = entryContext.match(/"priceUsd"\s*:\s*([\d.]+)/);
+        if (priceMatch && priceMatch[1]) {
+            entryPrice = parseFloat(priceMatch[1]);
+        }
+
+        if (entryPrice > 0 && currentPrice < (entryPrice * 0.3)) {
+            console.log(`[STOP LOSS] ${symbol} price ($${currentPrice}) is < 30% of entry ($${entryPrice}). Taking hard stop.`);
+            const sellAmount = balance; // sell all
+            if (isPumpFun) {
+                await this.executePumpFunSell(mint, symbol, sellAmount, "Hard Stop Loss Triggered (Down 70%+)");
+            } else {
+                await this.executeSell(mint, symbol, sellAmount, "Hard Stop Loss Triggered (Down 70%+)");
+            }
+            return; // Skip LLM evaluation
+        }
+
         const prompt = `You are an autonomous Solana trading agent.
 Current Position:
 - Token: ${symbol} (${mint})
@@ -408,12 +424,12 @@ Respond with a JSON object in this exact format:
 
         console.log(`Consulting LLM for SELL decision on ${symbol}...`);
         try {
-            const response = await this.anthropic.messages.create({
-                model: 'claude-3-haiku-20240307',
-                max_tokens: 200,
-                messages: [{ role: 'user', content: prompt }]
+            const model = this.genAI.getGenerativeModel({ 
+                model: 'gemini-2.5-flash',
+                generationConfig: { maxOutputTokens: 200 }
             });
-            const responseText = (response.content[0] as any).text;
+            const result = await model.generateContent(prompt);
+            const responseText = result.response.text();
             const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
 
             if (jsonMatch) {
@@ -485,13 +501,21 @@ Respond with a JSON object in this exact format:
 
         let txHash = "pending...";
         try {
-            // 1. Get quote (Token -> SOL)
-            const quoteResponse: any = await (
-                await fetch(`https://public.jupiterapi.com/quote?inputMint=${mint}&outputMint=So11111111111111111111111111111111111111112&amount=${Math.floor(amount * 1e6)}&slippageBps=1000`)
-            ).json(); // Note: amount needs to be in atoms. We'd need token decimals here.
+            // 1. Fetch token decimals dynamically from the chain
+            const mintPublicKey = new PublicKey(mint);
+            const mintInfo = await this.connection.getParsedAccountInfo(mintPublicKey);
+            let decimals = 6; // Fallback to 6
+            
+            if (mintInfo.value && 'parsed' in mintInfo.value.data) {
+                decimals = (mintInfo.value.data as any).parsed.info.decimals;
+            }
 
-            // For now, this is a simplified SELL execution. 
-            // Real implementation would need to handle decimals correctly.
+            const amountAtoms = Math.floor(amount * Math.pow(10, decimals));
+
+            // 2. Get quote (Token -> SOL)
+            const quoteResponse: any = await (
+                await fetch(`https://public.jupiterapi.com/quote?inputMint=${mint}&outputMint=So11111111111111111111111111111111111111112&amount=${amountAtoms}&slippageBps=1000`)
+            ).json();
 
             if (quoteResponse.error) throw new Error(quoteResponse.error);
 

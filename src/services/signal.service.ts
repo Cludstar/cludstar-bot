@@ -46,8 +46,15 @@ export class SignalService {
     private async processPumpCoins(coins: any[], reasoningPrefix: string) {
         if (!Array.isArray(coins) || coins.length === 0) return;
 
-        // Process up to 5 tokens per batch to handle the high density
-        const toProcess = coins.filter(c => c.mint && !this.recentTokens.has(c.mint)).slice(0, 5);
+        // Process up to 5 tokens per batch to handle the high density.
+        // Filter out tokens with < $5000 market cap to avoid spamming the LLM with dust/scam tokens.
+        const toProcess = coins
+            .filter(c => c.mint && !this.recentTokens.has(c.mint))
+            .filter(c => {
+                const mc = c.usd_market_cap || (c.coin ? c.coin.usd_market_cap : 0);
+                return mc > 5000;
+            })
+            .slice(0, 5);
 
         for (const item of toProcess) {
             // Handle both structure: { coin: {...} } (Top Runners) and {...} (Normal Lists)

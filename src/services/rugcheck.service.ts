@@ -74,8 +74,8 @@ export class RugCheckService {
 
         } catch (error: any) {
             console.error(`[RugCheck] Error querying API: ${error.message}`);
-            // Fallback: allow the trade to proceed but flag the error
-            return { isSafe: true, risks: ["api_error"], score: 0 };
+            // Fallback: block trade if API fails (fail-closed for safety)
+            return { isSafe: false, risks: ["api_error"], score: 0 };
         }
     }
 }
