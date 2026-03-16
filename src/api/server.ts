@@ -34,7 +34,8 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
             const sol = lamports / 1e9;
             res.json({
                 currentBalance: parseFloat(sol.toFixed(4)),
-                targetBalance: 100
+                targetBalance: 100,
+                walletAddress: pubKey.toString()
             });
         } catch (error: any) {
             console.error("Failed to fetch balance:", error);

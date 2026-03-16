@@ -163,6 +163,15 @@ progress::-webkit-progress-value {
     color: var(--accent-dark);
 }
 
+.wallet-address {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    letter-spacing: 0.05em;
+    word-break: break-all;
+}
+
 .log-panel {
     background: var(--panel-bg);
     border: 1px solid var(--accent-dark);
