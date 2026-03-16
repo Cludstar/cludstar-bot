@@ -127,57 +127,67 @@ export function createServer(): express.Application {
     }
   });
 
-  // Memory stats API (for frontend cortex visualization)
-  app.get('/api/memory-stats', async (req: Request, res: Response) => {
+  // Dashboard API: Mission Status
+  app.get('/api/mission', async (req: Request, res: Response) => {
     try {
-      const owner = getRequestOwner(req);
-      const stats = await withRequestScope(req, () => getMemoryStats());
-      if (!stats) {
-        // No owner identity — return empty stats, never unscoped data
-        res.json({ total: 0, byType: {}, embeddedCount: 0, avgDecay: 0, avgImportance: 0, uniqueUsers: 0, totalDreamSessions: 0, topTags: [], topConcepts: [], scoped_to: null });
+      const { Connection, PublicKey } = require('@solana/web3.js');
+      const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
+      const ownerWallet = require('../core/memory').getOwnerWallet();
+      if (!ownerWallet) {
+        res.json({ currentBalance: 0, targetBalance: 100, walletAddress: null });
         return;
       }
-      res.json({ ...stats, scoped_to: owner });
-    } catch (err) {
-      log.error({ err }, 'Memory stats endpoint error');
-      res.status(500).json({ error: 'Failed to fetch memory stats' });
+      const pubKey = new PublicKey(ownerWallet);
+      const lamports = await connection.getBalance(pubKey);
+      const sol = lamports / 1e9;
+      res.json({
+          currentBalance: parseFloat(sol.toFixed(4)),
+          targetBalance: 100,
+          walletAddress: pubKey.toString()
+      });
+    } catch (error: any) {
+      log.error({ error }, "Failed to fetch balance");
+      res.status(500).json({ error: error.message });
     }
   });
 
-  // Recent memories API (for timeline visualization)
+  // Dashboard API: Trade Logs
+  app.get('/api/trades', async (req: Request, res: Response) => {
+    try {
+      const db = getDb();
+      const { data, error } = await db
+          .from('memories')
+          .select('*')
+          .in('memory_type', ['episodic'])
+          .overlaps('tags', ['trade_execution', 'trade_decision'])
+          .order('created_at', { ascending: false })
+          .limit(100);
+      
+      if (error) throw error;
+      res.json(data);
+    } catch (error: any) {
+      log.error({ error }, "Failed to fetch trades");
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Dashboard API: Memory Stream (Non-trade logs)
   app.get('/api/memories', async (req: Request, res: Response) => {
     try {
-      const hours = Math.min(parseInt(req.query.hours as string) || 168, 720); // Default 1 week, max 30 days
-      const limit = Math.min(parseInt(req.query.limit as string) || 30, 50);
-      const owner = getRequestOwner(req);
-      const memories = await withRequestScope(req, () => getRecentMemories(hours, undefined, limit));
-      if (!memories) {
-        // No owner identity — return empty, never unscoped data
-        res.json({ memories: [], count: 0, scoped_to: null, lastUpdate: new Date().toISOString() });
-        return;
-      }
-      res.json({
-        memories: memories.map(m => ({
-          id: m.id,
-          memory_type: m.memory_type,
-          summary: m.summary,
-          content: m.content,
-          tags: m.tags,
-          importance: m.importance,
-          decay_factor: m.decay_factor,
-          emotional_valence: m.emotional_valence,
-          access_count: m.access_count,
-          source: m.source,
-          created_at: m.created_at,
-          solana_signature: m.solana_signature || null,
-        })),
-        count: memories.length,
-        scoped_to: owner,
-        lastUpdate: new Date().toISOString(),
-      });
-    } catch (err) {
-      log.error({ err }, 'Memories endpoint error');
-      res.status(500).json({ error: 'Failed to fetch memories' });
+      const db = getDb();
+      const { data, error } = await db
+          .from('memories')
+          .select('*')
+          .in('memory_type', ['episodic', 'procedural', 'semantic'])
+          .not('tags', 'overlaps', '{trade_execution,trade_decision}')
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+      if (error) throw error;
+      res.json(data);
+    } catch (error: any) {
+      log.error({ error }, "Failed to fetch memories");
+      res.status(500).json({ error: error.message });
     }
   });
 
