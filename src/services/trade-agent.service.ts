@@ -116,7 +116,7 @@ Respond with a JSON object in this exact format:
 
             // Extract JSON from Gemini's response (strip markdown code fences if present)
             let cleanedResponse = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-            const jsonMatch = cleanedResponse.match(/\{[\s\S]*?\}/);
+            const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
                 decision = parsed.decision === 'BUY' ? 'BUY' : 'SKIP';
@@ -448,7 +448,7 @@ Respond with a JSON object in this exact format:
             const responseText = result.response.text();
             // Strip markdown code fences from Gemini response
             let cleanedResponse = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-            const jsonMatch = cleanedResponse.match(/\{[\s\S]*?\}/);
+            const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
 
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
