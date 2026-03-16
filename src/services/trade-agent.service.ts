@@ -31,6 +31,10 @@ export class TradeAgentService {
         this.rugCheck = new RugCheckService();
     }
 
+    public getBrain() {
+        return this.brain;
+    }
+
     async evaluateSignal(signal: TradeSignal) {
         console.log(`Evaluating signal for ${signal.symbol}...`);
 
@@ -195,7 +199,7 @@ Respond with a JSON object in this exact format:
                     amount: amountSol,
                     denominatedInSol: "true",
                     slippage: 10,
-                    priorityFee: 0.005,
+                    priorityFee: 0.008,
                     pool: "pump"
                 })
             });

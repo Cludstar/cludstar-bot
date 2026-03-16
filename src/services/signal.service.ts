@@ -41,6 +41,28 @@ export class SignalService {
         // migratedLoop();
         // almostBondedLoop();
         dexSearchLoop();
+        this.guidedLearningLoop();
+    }
+
+    private async guidedLearningLoop() {
+        const injectLesson = async () => {
+            console.log("Injecting Guided Learning focal point...");
+            try {
+                await this.agent.getBrain().store({
+                    type: 'episodic',
+                    content: "CRITICAL SYSTEM OBJECTIVE: Analyze the correlation between 'Bonding Progress' and 'Social Buzz'. During the next Dream Cycle, specifically investigate why we skip tokens that hit 90% bonding but have low creator score.",
+                    summary: "Guided Learning: Investigate Bonding/Social correlation",
+                    tags: ['guided_learning', 'procedural_update', 'system_directive'],
+                    importance: 0.95,
+                    source: 'SystemDirector'
+                });
+            } catch (error) {
+                console.error("Failed to inject guided learning focal point:", error);
+            }
+            // Inject once every 6 hours
+            setTimeout(injectLesson, 6 * 60 * 60 * 1000);
+        };
+        injectLesson();
     }
 
     private async processPumpCoins(coins: any[], reasoningPrefix: string) {
