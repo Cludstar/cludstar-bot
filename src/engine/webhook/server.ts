@@ -932,8 +932,8 @@ export function createServer(): express.Application {
 
   // Main website + wallet verification
   // Resolve public dir relative to project root (works in both dev and prod)
-  const publicDir = path.join(process.cwd(), 'src', 'verify-app', 'public');
-  const distPublicDir = path.join(process.cwd(), 'dist', 'verify-app', 'public');
+  const publicDir = path.join(process.cwd(), 'public');
+  const distPublicDir = path.join(process.cwd(), 'public');
 
   // Serve campaign page at /10days (hidden from nav, direct link only)
   app.get('/campaign.html', (_req: Request, res: Response) => {
