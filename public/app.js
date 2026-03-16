@@ -22,11 +22,14 @@ async function fetchLogs() {
         const response = await fetch('/api/trades');
         const memories = await response.json();
 
-        const container = document.getElementById('trade-logs');
-        container.innerHTML = '';
+        const tradeContainer = document.getElementById('trade-logs');
+        const memoryContainer = document.getElementById('memory-logs');
+        tradeContainer.innerHTML = '';
+        memoryContainer.innerHTML = '';
 
         if (!memories || memories.length === 0) {
-            container.innerHTML = '<div class="log-entry">Waiting for signals and Clude initialization...</div>';
+            tradeContainer.innerHTML = '<div class="log-entry">Waiting for signals...</div>';
+            memoryContainer.innerHTML = '<div class="log-entry">Agent is initializing...</div>';
             return;
         }
 
@@ -53,7 +56,15 @@ async function fetchLogs() {
                 <div class="log-content">${mem.content}</div>
                 <div class="log-tags">Tags: ${mem.tags ? mem.tags.join(', ') : 'none'}</div>
             `;
-            container.appendChild(el);
+            
+            // Filter logic: if tags contain 'trade_execution' or 'trade_decision', map to Trade Logs, else Memory Stream
+            const isTrade = mem.tags && (mem.tags.includes('trade_execution') || mem.tags.includes('trade_decision'));
+            
+            if (isTrade) {
+                tradeContainer.appendChild(el);
+            } else {
+                memoryContainer.appendChild(el);
+            }
         });
 
     } catch (e) {
