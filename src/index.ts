@@ -8,7 +8,7 @@ import { Cortex } from 'clude-bot';
 dotenv.config();
 
 async function main() {
-    console.log('Starting Solana Trade Agent...');
+    console.log('Starting cludstar...');
 
     // 1. Initialize Wallet
     const walletService = new WalletService(process.env.BOT_PRIVATE_KEY);
