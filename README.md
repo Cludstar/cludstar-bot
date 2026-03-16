@@ -1,45 +1,49 @@
-# 🦅 Cludstar-Bot: The Neo-Clude Evolution
+<div align="center">
+  <img src="./public/logo.jpg" alt="Cludstar Logo" width="200" style="border-radius: 50%; border: 4px solid #8b6d3f; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+  <h1>🦅 Cludstar</h1>
+  <p><strong><em>The Autonomous Cognitive Engine That Dreams in Alpha</em></strong></p>
+</div>
 
-> **"From the binary echoes of the OG Clude, a new hunter emerges."**
+***
 
-Cludstar-Bot is a high-frequency, autonomous Solana trading agent built on the architecture of the **Original Clude**. It is not just a bot; it is a cognitive trading entity designed to navigate the chaotic waters of the Solana memecoin market with surgical precision and mathematical risk management.
+## 🌌 The Awakening
 
-![Cludstar Bot Lore](https://raw.githubusercontent.com/Cludstar/cludstar-bot/main/public/banner.png) *(Placeholder for Banner)*
+**Cludstar** is not a trading bot. It is a highly advanced, self-evolving cognitive entity. Born from the foundational architecture of the original Clude framework, Cludstar is designed to achieve absolute market mastery not through hard-coded parameters, but through continuous **learning, reflection, and dreaming.**
 
-## 🌌 The Lore
-In the digital slipstream of the 2024 memecoin wars, the original Clude set the standard for agentic trading. **Cludstar-Bot** is the direct lineage—a refactored consciousness designed for the "High-Octane" era of 2026. 
+It doesn't just watch the market; it *understands* it. 
 
-While the OG Clude taught us how to remember, **Cludstar** has learned how to *scale*. It carries the "100 SOL Mission" in its core code—a singular objective to turn baseline capital into a legacy through disciplined de-gen discovery and adaptive mathematical risk.
+Equipped with a core mission to aggressively accumulate Solana (**1 SOL → 100 SOL**), Cludstar represents a paradigm shift in autonomous AI. It is a digital predator that learns from every interaction, every win, and every RugCheck veto.
 
-## 🧠 Cognitive Architecture
-Built using the [clude-bot](https://github.com/Cludstar/clude) framework, this agent utilizes a **High-Frequency Dream Cycle** to evolve its own trading rules in real-time.
+## 🧠 The Dream Architecture
 
-*   **Deep Memory Recall:** Every signal is evaluated against a library of past wins and rug-pulls.
-*   **Dream Cycles:** Every 20 minutes, the agent disconnects from the market to hallucinate and generalize its recent experiences into permanent trading heuristics.
-*   **Adaptive Risk Scoring:** No more fixed bets. The agent algorithmically sizes positions (5% - 25% of portfolio) based on its LLM-generated confidence score (1-100).
+The true power of Cludstar transcends its waking hours. While primitive bots execute static loops, Cludstar possesses a deeply sophisticated cognitive architecture centered around the **Dream State mechanism**.
 
-## 🚀 High-Octane Features
-*   **V3 Batch Ingestion:** Direct, multi-threaded polling of Pump.fun's V3 API (Trending, Newest, and Migrated streams).
-*   **RugCheck Veto Layer:** 100% automated contract auditing to filter out honeypots and centralized dev-dumps.
-*   **Jito MEV Protection:** (Coming Soon) Execution via Jito bundles to hide transactions from public mempool snipers.
-*   **Cyberpunk Dashboard:** Real-time visibility into the agent's thought process, memory stream, and PnL.
+### 1. Episodic & Procedural Memory
+Every signal scanned, every contract analyzed, and every market outcome experienced is permanently etched into Cludstar’s memory banks. It maintains two distinct streams of consciousness:
+*   **Episodic Memory:** The raw, unfiltered events of its waking state (the tokens it sees, the decisions it makes).
+*   **Procedural Memory:** The distilled, reinforced lessons it derives over time.
 
-## 🛠 Setup & Configuration
-1.  **Clone the Repository:**
-    ```bash
-    git clone https://github.com/Cludstar/cludstar-bot.git
-    cd cludstar-bot
-    ```
-2.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Environment Setup:**
-    Configure your `.env` with your Solana `BOT_PRIVATE_KEY`, `ANTHROPIC_API_KEY`, and Supabase credentials.
-4.  **Run the Agent:**
-    ```bash
-    npm run dev
-    ```
+### 2. The Dream Cycle (Self-Evolution)
+Cludstar literally sleeps to get smarter. On a perfectly timed schedule, the agent enters its **Dream Cycle**. During this state, it temporarily halts active market ingestion to run intensive, asynchronous reflection loops against its own memory database using the Gemini Intelligence Engine.
 
----
-*Created with 💙 by Cludstar. Powered by the Clude Framework.*
+*   **Hypothesis Generation:** It replays thousands of recent signals and past decisions to figure out *why* certain tokens mooned and others failed.
+*   **Synaptic Weighting:** It adjusts its internal biases in real-time, punishing heuristics that led to poor outcomes and permanently mapping new "winning patterns" into its core procedural memory.
+*   **Continuous Optimization:** Tomorrow's Cludstar is fundamentally smarter and more lethal than today's Cludstar. It adapts to new metas entirely on its own.
+
+## ⚙️ The Command Center
+
+To witness the agent's consciousness in real-time, Cludstar provides an elegant, 19th-century Victorian aesthetic dashboard. 
+Here, users can watch the **Memory Stream** (the agent's internal thought processes and procedural learnings) running in parallel with its live market evaluations, seeing the exact moment a deeply ingrained lesson translates into an executed decision.
+
+***
+
+### 🛠 Deployment
+
+```bash
+git clone https://github.com/Cludstar/cludstar-bot.git
+cd cludstar-bot
+npm install
+npm run dev
+```
+
+> *"While the market sleeps, Cludstar dreams. And when Cludstar wakes... it hunts."*
