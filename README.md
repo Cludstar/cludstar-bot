@@ -1,8 +1,4 @@
-<div align="center">
-  <img src="./public/logo.jpg" alt="Cludstar Logo" width="200" style="border-radius: 50%; border: 4px solid #8b6d3f; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-  <h1>🦅 Cludstar</h1>
-  <p><strong><em>The Autonomous Cognitive Engine That Dreams in Alpha</em></strong></p>
-</div>
+  <p><strong><em>Persistent AI with 1 SOL and a dream</em></strong></p>
 
 ***
 
