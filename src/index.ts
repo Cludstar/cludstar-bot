@@ -8,10 +8,14 @@ import { Cortex } from './engine';
 dotenv.config();
 
 async function main() {
-    console.log('Starting cludstar...');
+    console.log('Starting cludstar in mode:', process.env.NODE_ENV || 'development');
 
-    // 1. Initialize Wallet
-    const walletService = new WalletService(process.env.BOT_PRIVATE_KEY);
+    // 1. Initialize Wallet (Support Render Secret Files)
+    const walletService = new WalletService(
+        process.env.BOT_PRIVATE_KEY,
+        process.env.BOT_PRIVATE_KEY_PATH || '/etc/secrets/wallet.txt' // Default Render path if exists
+    );
+    walletService.checkSecurity();
     console.log(`Agent Wallet Address: ${walletService.getPublicKey()}`);
 
     // Wait for Supabase to be setup manually to initialize Cortex properly.

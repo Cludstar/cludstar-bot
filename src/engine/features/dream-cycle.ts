@@ -134,10 +134,6 @@ async function triggerReflection(): Promise<void> {
         await sleep(3000);
         await runLearning();      // Self-learning: track outcomes + refine strategies
         await sleep(3000);
-        // This line seems out of place in the dream cycle, but is added as per instruction.
-        // Ensure 'secretKey' and 'raw' are defined in a real-world scenario if this is intended.
-        // For now, it's placed exactly where the user requested.
-        // secretKey = bs58.decode(raw); // Commented out as secretKey/raw are undefined here.
         await runEmergence();
       })(),
       new Promise<never>((_, reject) =>
