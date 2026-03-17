@@ -21,17 +21,23 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
     // Endpoint for all standard agent actions and logs
     app.get('/api/trades', async (req, res) => {
         try {
-            const db = (brain as any).db; // Access the Supabase client
+            console.log("GET /api/trades - Fetching latest trade memories...");
+            const db = (brain as any).db;
             const { data, error } = await db
                 .from('memories')
                 .select('*')
                 .in('memory_type', ['episodic', 'procedural'])
                 .order('created_at', { ascending: false })
-                .limit(100);
+                .limit(50);
             
-            if (error) throw error;
-            res.json(data);
+            if (error) {
+                console.error("Supabase error in /api/trades:", error);
+                throw error;
+            }
+            console.log(`GET /api/trades - Found ${data?.length || 0} memories`);
+            res.json(data || []);
         } catch (error: any) {
+            console.error("Error in /api/trades:", error);
             res.status(500).json({ error: error.message });
         }
     });
@@ -39,19 +45,30 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
     // Endpoint for non-trade memory logs (Dreaming, reasoning, system)
     app.get('/api/memories', async (req, res) => {
         try {
+            console.log("GET /api/memories - Fetching system memories...");
             const db = (brain as any).db;
             const { data, error } = await db
                 .from('memories')
                 .select('*')
-                .in('memory_type', ['episodic', 'procedural', 'semantic', 'self_model', 'introspective'])
-                .not('tags', 'cs', '{"trade_execution"}')
-                .not('tags', 'cs', '{"trade_decision"}')
+                .in('memory_type', ['semantic', 'self_model', 'introspective', 'episodic', 'procedural'])
                 .order('created_at', { ascending: false })
-                .limit(100);
+                .limit(50);
 
-            if (error) throw error;
-            res.json(data);
+            if (error) {
+                console.error("Supabase error in /api/memories:", error);
+                throw error;
+            }
+
+            // Client-side filtering as fallback if .not() is tricky with tags
+            const filtered = (data || []).filter((m: any) => {
+                const tags = m.tags || [];
+                return !tags.includes('trade_execution') && !tags.includes('trade_decision');
+            });
+
+            console.log(`GET /api/memories - Found ${filtered.length} relevant memories`);
+            res.json(filtered);
         } catch (error: any) {
+            console.error("Error in /api/memories:", error);
             res.status(500).json({ error: error.message });
         }
     });
