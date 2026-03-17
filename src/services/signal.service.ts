@@ -108,7 +108,14 @@ export class SignalService {
     private async fetchPumpTrending() {
         try {
             console.log("Fetching Pump.fun Top Runners...");
-            const response = await fetch('https://frontend-api-v3.pump.fun/coins/top-runners');
+            const response = await fetch('https://frontend-api-v3.pump.fun/coins/top-runners', {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`fetchPumpTrending error: ${response.status} ${response.statusText}`, text.slice(0, 200));
+                return;
+            }
             const data: any = await response.json();
             await this.processPumpCoins(data, "🔥 PUMP TRENDING (Top Runners)");
         } catch (error) {
@@ -120,7 +127,14 @@ export class SignalService {
         try {
             console.log("Fetching Pump.fun Newest Listings...");
             const url = 'https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=created_timestamp&includeNsfw=false&order=DESC';
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`fetchPumpNewest error: ${response.status} ${response.statusText}`, text.slice(0, 200));
+                return;
+            }
             const data: any = await response.json();
             await this.processPumpCoins(data, "✨ PUMP NEWEST (Bonding Curve)");
         } catch (error) {
@@ -133,9 +147,16 @@ export class SignalService {
             console.log("Fetching Pump.fun Recently Migrated...");
             // Market cap sort usually shows the biggest/completed ones
             const url = 'https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=market_cap&includeNsfw=false&order=DESC';
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`fetchPumpMigrated error: ${response.status} ${response.statusText}`, text.slice(0, 200));
+                return;
+            }
             const data: any = await response.json();
-
+            
             // Filter for only completed tokens in this batch
             const migrated = Array.isArray(data) ? data.filter((c: any) => c.complete === true) : [];
             await this.processPumpCoins(migrated, "🚀 PUMP MIGRATED (Raydium/PumpSwap)");
@@ -149,7 +170,14 @@ export class SignalService {
             console.log("Fetching Pump.fun Almost Bonded...");
             // High market cap but NOT complete = Almost Bonded
             const url = 'https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=market_cap&includeNsfw=false&order=DESC';
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`fetchPumpAlmostBonded error: ${response.status} ${response.statusText}`, text.slice(0, 200));
+                return;
+            }
             const data: any = await response.json();
 
             const almostBonded = Array.isArray(data) ? data.filter((c: any) => c.complete === false) : [];
@@ -162,7 +190,14 @@ export class SignalService {
     private async fetchNewListings() {
         try {
             console.log("Fetching latest token profiles (New Listings)...");
-            const response = await fetch('https://api.dexscreener.com/token-profiles/latest/v1');
+            const response = await fetch('https://api.dexscreener.com/token-profiles/latest/v1', {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`fetchNewListings error: ${response.status} ${response.statusText}`, text.slice(0, 200));
+                return;
+            }
             const data: any = await response.json();
 
             // data from this endpoint is an array of token profiles
@@ -181,7 +216,10 @@ export class SignalService {
                         this.recentTokens.add(newestToken.tokenAddress);
 
                         // Fetch actual pair data
-                        const pairResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${newestToken.tokenAddress}`);
+                        const pairResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${newestToken.tokenAddress}`, {
+                            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+                        });
+                        if (!pairResponse.ok) continue;
                         const pairData: any = await pairResponse.json();
 
                         if (pairData.pairs && pairData.pairs.length > 0) {
@@ -227,7 +265,15 @@ export class SignalService {
             ];
             const randomQuery = searchQueries[Math.floor(Math.random() * searchQueries.length)];
 
-            const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${randomQuery}`);
+            const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${randomQuery}`, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            });
+            
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`fetchLatestSignals error: ${response.status} ${response.statusText}`, text.slice(0, 200));
+                return;
+            }
             const data: any = await response.json();
 
             if (data.pairs && data.pairs.length > 0) {
