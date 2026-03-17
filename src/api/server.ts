@@ -18,7 +18,7 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
     const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
     const pubKey = new PublicKey(walletPublicKey);
 
-    // Endpoint for real trade logs only
+    // Endpoint for all standard agent actions and logs
     app.get('/api/trades', async (req, res) => {
         try {
             const db = (brain as any).db; // Access the Supabase client
@@ -26,7 +26,6 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
                 .from('memories')
                 .select('*')
                 .in('memory_type', ['episodic', 'procedural'])
-                .overlaps('tags', ['trade_execution', 'trade_decision'])
                 .order('created_at', { ascending: false })
                 .limit(100);
             

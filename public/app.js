@@ -63,7 +63,7 @@ async function fetchLogs() {
         const trades = await tradeRes.json();
         const memories = await memoryRes.json();
 
-        renderMemories(trades, 'trade-logs', 'Waiting for signals...');
+        renderMemories(trades, 'trade-logs', 'Waiting for logs...');
         renderMemories(memories, 'memory-logs', 'Agent is initializing...');
 
     } catch (e) {
