@@ -112,7 +112,7 @@ Respond with a JSON object in this exact format:
 
         try {
             const model = this.genAI.getGenerativeModel({ 
-                model: 'gemini-1.5-flash',
+                model: 'gemini-2.5-flash',
                 generationConfig: { maxOutputTokens: 2048, responseMimeType: 'application/json' }
             });
             const result = await model.generateContent(prompt);
@@ -473,7 +473,7 @@ Respond with a JSON object in this exact format:
         console.log(`Consulting LLM for SELL decision on ${symbol}...`);
         try {
             const model = this.genAI.getGenerativeModel({ 
-                model: 'gemini-1.5-flash',
+                model: 'gemini-2.5-flash',
                 generationConfig: { maxOutputTokens: 2048, responseMimeType: 'application/json' }
             });
             const result = await model.generateContent(prompt);
