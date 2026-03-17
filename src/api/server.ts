@@ -25,7 +25,7 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
             const { data, error } = await db
                 .from('memories')
                 .select('*')
-                .in('memory_type', ['episodic'])
+                .in('memory_type', ['episodic', 'procedural'])
                 .overlaps('tags', ['trade_execution', 'trade_decision'])
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -44,8 +44,9 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
             const { data, error } = await db
                 .from('memories')
                 .select('*')
-                .in('memory_type', ['episodic', 'procedural', 'semantic'])
-                .not('tags', 'overlaps', '{trade_execution,trade_decision}')
+                .in('memory_type', ['episodic', 'procedural', 'semantic', 'self_model', 'introspective'])
+                .not('tags', 'cs', '{"trade_execution"}')
+                .not('tags', 'cs', '{"trade_decision"}')
                 .order('created_at', { ascending: false })
                 .limit(100);
 
