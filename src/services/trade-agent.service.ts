@@ -112,17 +112,45 @@ Respond with a JSON object in this exact format:
 
         try {
             const model = this.genAI.getGenerativeModel({ 
-                model: 'gemini-2.5-flash',
-                generationConfig: { maxOutputTokens: 1024, responseMimeType: 'application/json' }
+                model: 'gemini-2.0-flash',
+                generationConfig: { maxOutputTokens: 2048, responseMimeType: 'application/json' }
             });
             const result = await model.generateContent(prompt);
             const responseText = result.response.text();
 
             // Extract JSON from Gemini's response (strip markdown code fences if present)
-            let cleanedResponse = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-            const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+            let cleanedResponse = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+            
+            // Try to find a JSON-like structure
+            let jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+            let parsed = null;
+
             if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
+                try {
+                    parsed = JSON.parse(jsonMatch[0]);
+                } catch (e) {
+                    // Fallback to manual repair if it's just a missing brace
+                    try {
+                        parsed = JSON.parse(jsonMatch[0] + '}');
+                    } catch (e2) {
+                        try {
+                            parsed = JSON.parse(jsonMatch[0] + '"}');
+                        } catch (e3) {
+                            console.error("Failed to parse JSON even with repair attempt");
+                        }
+                    }
+                }
+            } else if (cleanedResponse.startsWith('{')) {
+                // Try aggressive repair for truncated JSON
+                const repaired = this.repairTruncatedJson(cleanedResponse);
+                try {
+                    parsed = JSON.parse(repaired);
+                } catch (e) {
+                    console.error("Failed to parse aggressive repair");
+                }
+            }
+
+            if (parsed) {
                 decision = parsed.decision === 'BUY' ? 'BUY' : 'SKIP';
                 confidenceScore = parsed.confidenceScore || 0;
                 llmReasoning = parsed.reasoning || "No reasoning provided by LLM.";
@@ -445,17 +473,39 @@ Respond with a JSON object in this exact format:
         console.log(`Consulting LLM for SELL decision on ${symbol}...`);
         try {
             const model = this.genAI.getGenerativeModel({ 
-                model: 'gemini-2.5-flash',
-                generationConfig: { maxOutputTokens: 1024, responseMimeType: 'application/json' }
+                model: 'gemini-2.0-flash',
+                generationConfig: { maxOutputTokens: 2048, responseMimeType: 'application/json' }
             });
             const result = await model.generateContent(prompt);
             const responseText = result.response.text();
             // Strip markdown code fences from Gemini response
             let cleanedResponse = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-            const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+            // Try to find a JSON-like structure
+            let jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+            let parsed = null;
 
             if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
+                try {
+                    parsed = JSON.parse(jsonMatch[0]);
+                } catch (e) {
+                    try {
+                        parsed = JSON.parse(jsonMatch[0] + '}');
+                    } catch (e2) {
+                        try {
+                            parsed = JSON.parse(jsonMatch[0] + '"}');
+                        } catch (e3) {
+                            console.error("Failed to parse SELL JSON even with repair attempt");
+                        }
+                    }
+                }
+            } else if (cleanedResponse.startsWith('{')) {
+                const repaired = (this as any).repairTruncatedJson(cleanedResponse);
+                try {
+                    parsed = JSON.parse(repaired);
+                } catch (e) {}
+            }
+
+            if (parsed) {
                 if (parsed.decision === 'SELL' && parsed.amountToken > 0) {
                     const sellAmount = Math.min(parsed.amountToken, balance);
                     console.log(`Executing SELL for ${symbol}: ${sellAmount}`);
@@ -615,5 +665,27 @@ Respond with a JSON object in this exact format:
             tags: ['trade_execution', 'sell', symbol, txHash],
             source: 'TradeAgent'
         });
+    }
+
+    private repairTruncatedJson(json: string): string {
+        let repaired = json.trim();
+        if (!repaired.endsWith('}')) {
+            // Count nesting
+            let braces = 0;
+            let inString = false;
+            for (let i = 0; i < repaired.length; i++) {
+                if (repaired[i] === '"' && repaired[i-1] !== '\\') inString = !inString;
+                if (!inString) {
+                    if (repaired[i] === '{') braces++;
+                    if (repaired[i] === '}') braces--;
+                }
+            }
+            if (inString) repaired += '"';
+            while (braces > 0) {
+                repaired += '}';
+                braces--;
+            }
+        }
+        return repaired;
     }
 }
