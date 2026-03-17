@@ -50,7 +50,9 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
             const { data, error } = await db
                 .from('memories')
                 .select('*')
-                .in('memory_type', ['semantic', 'self_model', 'introspective', 'episodic', 'procedural'])
+                .not('tags', 'cs', '{"trade_execution"}')
+                .not('tags', 'cs', '{"trade_decision"}')
+                .not('tags', 'cs', '{"rug_veto"}')
                 .order('created_at', { ascending: false })
                 .limit(50);
 
@@ -59,14 +61,8 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
                 throw error;
             }
 
-            // Client-side filtering as fallback if .not() is tricky with tags
-            const filtered = (data || []).filter((m: any) => {
-                const tags = m.tags || [];
-                return !tags.includes('trade_execution') && !tags.includes('trade_decision');
-            });
-
-            console.log(`GET /api/memories - Found ${filtered.length} relevant memories`);
-            res.json(filtered);
+            console.log(`GET /api/memories - Found ${data?.length || 0} relevant memories`);
+            res.json(data || []);
         } catch (error: any) {
             console.error("Error in /api/memories:", error);
             res.status(500).json({ error: error.message });
