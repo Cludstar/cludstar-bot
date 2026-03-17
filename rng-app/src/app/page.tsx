@@ -1,80 +1,178 @@
-"use client";
-import { useState } from 'react';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Connection, Transaction, PublicKey } from '@solana/web3.js';
+import { Loader2, Sparkles, Wallet, Zap, ShieldCheck, Dice5 } from 'lucide-react';
 
 export default function Home() {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [result, setResult] = useState<number | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string>('');
+  const [randomNumber, setRandomNumber] = useState<number | null>(null);
+  const [isGated, setIsGated] = useState(true);
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    setResult(null);
+  // Check if Phantom is installed
+  const getProvider = () => {
+    if (typeof window !== 'undefined' && 'solana' in window) {
+      return (window as any).solana;
+    }
+    return null;
+  };
+
+  const connectWallet = async () => {
+    const provider = getProvider();
+    if (provider) {
+      try {
+        const response = await provider.connect();
+        setWalletAddress(response.publicKey.toString());
+      } catch (err) {
+        console.error("Connection failed", err);
+      }
+    } else {
+      window.open("https://phantom.app/", "_blank");
+    }
+  };
+
+  const generateNumber = async () => {
+    if (!walletAddress) {
+      connectWallet();
+      return;
+    }
+
+    setLoading(true);
+    setStatus('Generating invoice...');
+    setRandomNumber(null);
 
     try {
-      const response = await fetch('/api/rng', {
+      // 1. Get Transaction from Backend
+      const invResp = await fetch('/api/payment/invoice', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userWallet: walletAddress })
       });
-      const data = await response.json();
       
-      if (data.success) {
-        setResult(data.result);
-      }
-    } catch (error) {
-      console.error('Error generating number:', error);
+      const { transaction: serializedTx, paymentParams, error: invError } = await invResp.json();
+      if (invError) throw new Error(invError);
+
+      // 2. Sign and Send Transaction
+      setStatus('Waiting for signature...');
+      const provider = getProvider();
+      const transaction = Transaction.from(Buffer.from(serializedTx, 'base64'));
+      
+      const { signature } = await provider.signAndSendTransaction(transaction);
+      
+      setStatus('Confirming transaction...');
+      const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com');
+      await connection.confirmTransaction(signature, 'confirmed');
+
+      // 3. Verify Payment
+      setStatus('Verifying proof...');
+      const verifyResp = await fetch('/api/payment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentParams })
+      });
+
+      const { success, result, error: verError } = await verifyResp.json();
+      if (!success) throw new Error(verError || 'Verification failed');
+
+      setRandomNumber(result);
+      setStatus('Success!');
+      setIsGated(false);
+      
+      // Reset gate after 10 seconds for fun
+      setTimeout(() => setIsGated(true), 10000);
+
+    } catch (err: any) {
+      console.error(err);
+      setStatus(`Error: ${err.message || 'Something went wrong'}`);
     } finally {
-      setIsGenerating(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-8 font-sans text-slate-100">
+    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* Background Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 blur-[120px] rounded-full" />
       
-      {/* Background ambient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="z-10 w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <header className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-medium tracking-wider uppercase mb-2">
+            <ShieldCheck size={14} />
+            Solana Payment Gated
+          </div>
+          <h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-br from-white via-white to-emerald-400 bg-clip-text text-transparent">
+            CludRNG
+          </h1>
+          <p className="text-zinc-400 text-lg font-light">
+            Secure agent-verified random generation.
+          </p>
+        </header>
 
-      <main className="relative z-10 max-w-lg w-full bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-12 shadow-2xl flex flex-col items-center text-center">
-        
-        <h1 className="text-4xl font-extrabold tracking-tight mb-2 bg-gradient-to-br from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-          Quantum Oracle
-        </h1>
-        <p className="text-slate-400 text-sm mb-12 uppercase tracking-widest font-medium">
-          Pure Randomness Generator
-        </p>
-
-        {/* Display Area */}
-        <div className="w-full h-48 bg-slate-950/50 rounded-2xl border border-slate-800/50 flex items-center justify-center mb-8 shadow-inner overflow-hidden relative">
-          {isGenerating ? (
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-                <span className="text-indigo-400 font-mono text-sm tracking-widest animate-pulse">CALCULATING...</span>
+        <div className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-3xl p-8 shadow-2xl relative group">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/20 to-emerald-500/0 rounded-3xl blur opacity-0 group-hover:opacity-100 transition duration-1000" />
+          
+          <div className="relative space-y-8 text-center">
+            {randomNumber !== null ? (
+              <div className="py-8 animate-in zoom-in duration-500">
+                <div className="text-2xl text-emerald-400 font-medium mb-2 uppercase tracking-widest">Result</div>
+                <div className="text-8xl font-black text-white tabular-nums drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                  {randomNumber}
+                </div>
               </div>
-          ) : result !== null ? (
-            <div className="animate-in zoom-in duration-500 fade-in flex flex-col items-center">
-              <span className="text-7xl font-black bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent drop-shadow-lg">
-                {result}
-              </span>
-              <span className="text-slate-500 text-xs mt-4 font-mono">
-                RANGE: 0 - 1000
-              </span>
+            ) : (
+              <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                <div className="w-24 h-24 bg-zinc-800/50 rounded-2xl flex items-center justify-center border border-zinc-700/50">
+                  <Dice5 className="text-zinc-600" size={48} />
+                </div>
+                <div className="text-zinc-500 text-sm italic">Verification required to unlock</div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {!walletAddress ? (
+                <button
+                  onClick={connectWallet}
+                  className="w-full py-4 px-6 bg-white text-black hover:bg-zinc-200 font-bold rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                >
+                  <Wallet size={20} />
+                  Connect Wallet
+                </button>
+              ) : (
+                <button
+                  onClick={generateNumber}
+                  disabled={loading}
+                  className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-800 disabled:cursor-not-allowed font-bold rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-black shadow-lg shadow-emerald-500/20"
+                >
+                  {loading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <Zap size={20} fill="currentColor" />
+                  )}
+                  {loading ? 'Processing...' : 'Generate (0.00 SOL)'}
+                </button>
+              )}
+              
+              <div className="text-xs text-zinc-500 font-medium tracking-wide">
+                {status || (walletAddress ? `Wallet: ${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : 'Phantom wallet recommended')}
+              </div>
             </div>
-          ) : (
-            <span className="text-slate-600 font-mono text-4xl">???</span>
-          )}
+          </div>
         </div>
 
-        {/* Action Button */}
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="group relative w-full overflow-hidden rounded-xl bg-indigo-600 p-4 font-bold text-white transition-all hover:bg-indigo-500 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none shadow-[0_0_40px_-10px_rgba(79,70,229,0.5)] hover:shadow-[0_0_60px_-15px_rgba(79,70,229,0.7)]"
-        >
-          <span className="relative z-10 flex items-center justify-center gap-2 text-lg">
-            {isGenerating ? 'Accessing Oracle...' : 'Generate Number'}
-          </span>
-          {/* Button Shine Effect */}
-          <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
-        </button>
-
-      </main>
-    </div>
+        <footer className="grid grid-cols-2 gap-4">
+          {[
+            { label: 'Secure', icon: ShieldCheck, color: 'text-emerald-400' },
+            { label: 'Agent Verified', icon: Sparkles, color: 'text-emerald-400' }
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2 px-4 py-3 bg-zinc-900/30 border border-zinc-800 rounded-2xl text-xs text-zinc-400">
+              <item.icon size={14} className={item.color} />
+              {item.label}
+            </div>
+          ))}
+        </footer>
+      </div>
+    </main>
   );
 }

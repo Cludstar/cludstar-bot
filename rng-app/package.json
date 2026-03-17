@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@pump-fun/agent-payments-sdk": "^3.0.2",
+    "@solana/web3.js": "^1.98.4",
+    "lucide-react": "^0.577.0",
     "next": "16.1.7",
     "react": "19.2.3",
     "react-dom": "19.2.3"
