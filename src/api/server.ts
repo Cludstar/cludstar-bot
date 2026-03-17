@@ -4,6 +4,9 @@ import path from 'path';
 import { Cortex } from '../engine';
 import { Connection, PublicKey } from '@solana/web3.js';
 import dotenv from 'dotenv';
+import { NATIVE_MINT } from '@solana/spl-token';
+import { PumpAgent } from '@pump-fun/agent-payments-sdk';
+import { BN } from '@coral-xyz/anchor';
 dotenv.config();
 
 const app = express();
@@ -80,6 +83,85 @@ export function startServer(brain: Cortex, walletPublicKey: string) {
             });
         } catch (error: any) {
             console.error("Failed to fetch balance:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // --- RNG Payment Implementation ---
+    const AGENT_TOKEN = new PublicKey('2WVTfBD8ZfN4JwDFpfPvugWeJFy3FRC12Bw4QowFpump');
+
+    app.post('/api/payment/invoice', async (req, res) => {
+        try {
+            const { userWallet } = req.body;
+            if (!userWallet) return res.status(400).json({ error: "Missing wallet" });
+
+            const agent = new PumpAgent(AGENT_TOKEN, "mainnet", connection);
+            const userPubKey = new PublicKey(userWallet);
+
+            const amount = 0;
+            const memo = Math.floor(Math.random() * 1000000);
+            const startTime = Math.floor(Date.now() / 1000);
+            const endTime = startTime + 3600;
+
+            const instructions = await agent.buildAcceptPaymentInstructions({
+                user: userPubKey,
+                currencyMint: NATIVE_MINT,
+                amount,
+                memo,
+                startTime,
+                endTime
+            });
+
+            const transaction = new Transaction().add(...instructions);
+            const { blockhash } = await connection.getLatestBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = userPubKey;
+
+            const serializedTransaction = transaction.serialize({
+                requireAllSignatures: false,
+                verifySignatures: false,
+            }).toString('base64');
+
+            res.json({
+                transaction: serializedTransaction,
+                paymentParams: {
+                    user: userWallet,
+                    currencyMint: NATIVE_MINT.toBase58(),
+                    amount,
+                    memo,
+                    startTime,
+                    endTime
+                }
+            });
+        } catch (error: any) {
+            console.error("Express Invoice error:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    app.post('/api/payment/verify', async (req, res) => {
+        try {
+            const { paymentParams } = req.body;
+            if (!paymentParams) return res.status(400).json({ error: "Missing params" });
+
+            const agent = new PumpAgent(AGENT_TOKEN, "mainnet", connection);
+
+            const isValid = await agent.validateInvoicePayment({
+                user: new PublicKey(paymentParams.user),
+                currencyMint: new PublicKey(paymentParams.currencyMint),
+                amount: Number(paymentParams.amount),
+                memo: Number(paymentParams.memo),
+                startTime: Number(paymentParams.startTime),
+                endTime: Number(paymentParams.endTime)
+            });
+
+            if (isValid) {
+                res.json({ success: true, result: Math.floor(Math.random() * 1001) });
+            } else {
+                res.status(402).json({ success: false, error: "Verification failed" });
+            }
+        } catch (error: any) {
+            console.error("Express Verify error:", error);
             res.status(500).json({ error: error.message });
         }
     });
