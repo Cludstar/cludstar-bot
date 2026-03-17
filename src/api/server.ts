@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { Cortex } from '../engine';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import dotenv from 'dotenv';
 import { NATIVE_MINT } from '@solana/spl-token';
 import { PumpAgent } from '@pump-fun/agent-payments-sdk';
